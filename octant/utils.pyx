@@ -1,4 +1,8 @@
-# TODO: docstrings!
+"""
+Part of the octant package
+
+Optimized functions for working with cyclone tracks
+"""
 cimport cython
 import numpy as np
 cimport numpy as np
@@ -61,8 +65,8 @@ cpdef double great_circle(double lon1,
     return _great_circle(lon1, lon2, lat1, lat2, r=r)
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing
 cpdef double total_dist(double[:, ::1] lonlat):
     """
     Calculate the total distance given an array of longitudes and latitudes
@@ -88,13 +92,16 @@ cpdef double total_dist(double[:, ::1] lonlat):
     return dist
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing
 cpdef double[:, ::1] density_grid_rad(double[:, ::1] lon2d,
                                       double[:, ::1] lat2d,
                                       double[:, ::1] lonlat,
                                       double[:, ::1] count,
                                       double rad):
+    """
+    Calculate density based on radius [WIP]
+    """
     cdef int i, j, p
     cdef int jmax = lat2d.shape[0]
     cdef int imax = lon2d.shape[1]
@@ -108,12 +115,15 @@ cpdef double[:, ::1] density_grid_rad(double[:, ::1] lon2d,
     return count
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing
 cpdef double[:, ::1] density_grid_each(double[:, ::1] lon2d,
                                        double[:, ::1] lat2d,
                                        double[:, ::1] lonlat,
                                        double[:, ::1] count):
+    """
+    Calculate density based on lon-lat boxes [WIP]
+    """
     cdef int i, j, p
     cdef int jmax = lat2d.shape[0]-1
     cdef int imax = lon2d.shape[1]-1
@@ -130,14 +140,17 @@ cpdef double[:, ::1] density_grid_each(double[:, ::1] lon2d,
     return count
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing
 cdef double _masking_loop_func(double[:, ::1] mask,
                                double[:, ::1] lon2d,
                                double[:, ::1] lat2d,
                                double lon,
                                double lat,
                                double rad):
+    """
+    Masking function. See mask_tracks() for explanation.
+    """
     cdef int i, j
     cdef int jmax = lat2d.shape[0]
     cdef int imax = lon2d.shape[1]
@@ -151,8 +164,8 @@ cdef double _masking_loop_func(double[:, ::1] mask,
     return 0.
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing
 cpdef double mask_tracks(double[:, ::1] mask,
                          double[:, ::1] lon2d,
                          double[:, ::1] lat2d,
@@ -202,7 +215,33 @@ cdef double _traj_variance(double[:] x1,
                            double[:] t2,
                            double alpha=1.,
                            double beta=100):
+    """
+    Calculate cyclone track variance (eq. (3) in Blender and Schubert (2000))
 
+    Arguments
+    ---------
+    x1: double, shape(N, )
+        Array of longitudes of track 1
+    y1: double, shape(N, )
+        Array of latitudes of track 1
+    t1: double, shape(N, )
+        Array of times (in seconds) of track 1
+    x2: double, shape(M, )
+        Array of longitudes of track 2
+    y2: double, shape(M, )
+        Array of latitudes of track 2
+    t2: double, shape(M, )
+        Array of times (in seconds) of track 2
+    alpha: double, optional (default: 1)
+        Parameter alpha in eq. (3)
+    beta: double, optional (default: 100)
+        Parameter beta in eq. (3)
+
+    Returns
+    -------
+    variance_sum: double
+        Accumulated variance (sigma) between the two tracks
+    """
     cdef int imax1 = x1.shape[0]
     cdef int imax2 = x2.shape[0]
     cdef int i1, i2
@@ -218,8 +257,8 @@ cdef double _traj_variance(double[:] x1,
 
 
 @cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.
-@cython.cdivision(True)
+@cython.wraparound(False)  # Deactivate negative indexing
+@cython.cdivision(True)  # Do not check for ZeroDivision errors 
 cpdef double distance_metric(double[:] x1,
                              double[:] y1,
                              long[:] t1,
@@ -228,6 +267,38 @@ cpdef double distance_metric(double[:] x1,
                              long[:] t2,
                              double alpha=1.,
                              double beta=100.):
+    """
+    Calculate the distance metric (eq. (4) in Blender and Schubert (2000))
+
+    Arguments
+    ---------
+    x1: double, shape(N, )
+        Array of longitudes of track 1
+    y1: double, shape(N, )
+        Array of latitudes of track 1
+    t1: long, shape(N, )
+        Array of times (in nanoseconds) of track 1
+    x2: double, shape(M, )
+        Array of longitudes of track 2
+    y2: double, shape(M, )
+        Array of latitudes of track 2
+    t2: long, shape(M, )
+        Array of times (in nanoseconds) of track 2
+    alpha: double, optional (default: 1)
+        Parameter alpha in eq. (3)
+    beta: double, optional (default: 100)
+        Parameter beta in eq. (3)
+
+    Returns
+    -------
+    dm: double
+        The distance metric
+
+
+    Note: time arrays are taken in nanoseconds because this is the
+    default precision of numpy.datetime64 arrays within the pandas.DataFrame
+    representing a cyclone track
+    """
 
     cdef double dm
     cdef double sigma11
