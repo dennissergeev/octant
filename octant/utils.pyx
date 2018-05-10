@@ -5,16 +5,21 @@ cimport numpy as np
 from libc.math cimport pi, sin, cos, acos
 
 
+cdef double EARTH_RADIUS = 6371009.  # in metres
+
+
 cdef double _great_circle(double lon1,
                           double lon2,
                           double lat1,
-                          double lat2):
-    """ returns distance in metres """
+                          double lat2,
+                          double r=EARTH_RADIUS):
+    """
+    See the docstring for great_circle()
+    """
 
     cdef double deg2rad = pi / 180.
     cdef double ang
     cdef double dist
-    cdef double r = 6378.0e3 # in metres
     cdef double eps = 1e-12
 
     if abs(lon1-lon2) < eps and abs(lat1-lat2) < eps:
@@ -30,15 +35,48 @@ cdef double _great_circle(double lon1,
 cpdef double great_circle(double lon1,
                           double lon2,
                           double lat1,
-                          double lat2):
-    """ returns distance in metres """
+                          double lat2,
+                          double r=EARTH_RADIUS):
+    """
+    Calculate great circle distance between two points on a sphere
 
-    return _great_circle(lon1, lon2, lat1, lat2)
+    Arguments
+    ---------
+    lon1: double
+        Longitude of the first point
+    lat1: double
+        Latitude of the first point
+    lon2: double
+        Longitude of the second point
+    lat2: double
+        Latitude of the second point
+    r: double, optional (default: EARTH_RADIUS)
+        Radius of the sphere in metres
+    Returns
+    -------
+    dist: double
+        Distance in metres
+    """
+
+    return _great_circle(lon1, lon2, lat1, lat2, r=r)
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cpdef double total_dist(double[:, ::1] lonlat):
+    """
+    Calculate the total distance given an array of longitudes and latitudes
+
+    Arguments
+    ---------
+    lonlat: double, shape(N, 2)
+        Array of longitudes and latitudes
+
+    Returns
+    -------
+    dist: double
+        Total distance in metres
+    """
     cdef int p
     cdef int pmax = lonlat.shape[0]
     cdef double dist
@@ -120,6 +158,28 @@ cpdef double mask_tracks(double[:, ::1] mask,
                          double[:, ::1] lat2d,
                          double[:, ::1] lonlat,
                          double rad):
+    """
+    Count how many points of a cyclone track should be masked by their
+    proximity to masked values in a 2D array.
+
+    Arguments
+    ---------
+    mask: double, shape(M, N)
+        Mask array with 1 for masked values
+    lon2d: double, shape(M, N)
+        Array of longitudes corresponding to the mask
+    lat2d: double, shape(M, N)
+        Array of latitudes corresponding to the mask
+    lonlat: double, shape(P, 2)
+        Array of track's longitudes and latitudes
+    rad: double
+        Radius to check proximity
+
+    Returns
+    -------
+        Fraction of masked points of the track
+    """
+
     cdef int p
     cdef int pmax = lonlat.shape[0]
     cdef double points_near_coast

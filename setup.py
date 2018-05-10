@@ -46,7 +46,7 @@ setup(
         include_dirs=[np.get_include()],
     )],
     zip_safe=False,
-    setup_requires=['numpy', 'cython>=0.24.1'],
+    setup_requires=['numpy', 'cython'],
     install_requires=['numpy', 'pytest', 'cython', 'pandas', 'xarray'],
     classifiers=[
         "Development Status :: 3 - Alpha",
