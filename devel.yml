@@ -1,0 +1,15 @@
+name: octant_devel
+channels:
+- conda-forge
+dependencies:
+- cartopy
+- cython
+- ipykernel
+- line_profiler
+- matplotlib
+- numpy
+- pandas
+- python=3.6
+- pytest
+- scipy
+- xarray
