@@ -41,7 +41,7 @@ class OctantTrack(pd.DataFrame):
 
     @classmethod
     def from_df(cls, df):
-        return cls.from_records(df.to_records())
+        return cls.from_records(df.to_records(index=False))
 
     @classmethod
     def from_mux_df(cls, df):
@@ -198,9 +198,7 @@ class TrackRun:
         mux = pd.MultiIndex.from_arrays([new_track_idx,
                                          new_data.index.get_level_values(1)],
                                         names=new_data.index.names)
-        new_data.set_index(mux)
-
-        self.data = new_data
+        self.data = new_data.set_index(mux)
 
         if adapt_conf and other.conf is not None:
             if self.conf is None:
