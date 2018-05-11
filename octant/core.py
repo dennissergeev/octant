@@ -18,42 +18,45 @@ m2km = 1e-3
 TrackSubset = namedtuple('TrackSubset', ['good', 'pmc', 'polarlows'])
 
 
-class CycloneTrack:
+class OctantSeries(pd.Series):
+    @property
+    def _constructor(self):
+        return OctantSeries
+
+
+class OctantTrack(pd.DataFrame):
     """
     Instance of cyclone track
 
-    Quasi-subclass of `pandas.DataFrame`
+    Subclass of `pandas.DataFrame`
     """
-    def __init__(self, df):
-        """
-        Arguments
-        ---------
-        df: pandas.DataFrame
-            DataFrame with the following required columns:
-             - time
-             - lon
-             - lat
-        """
-        self.df = df
+    def __init__(self, *args, **kw):
+        super(OctantTrack, self).__init__(*args, **kw)
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}\n{self.df.__repr__()}"
+    @property
+    def _constructor(self):
+        return OctantTrack  # replace with self.__class__?
 
-    def __str__(self):
-        return self.df.__str__()
+    _constructor_sliced = OctantSeries
 
-    def __len__(self):
-        return self.df.__len__()
+    @classmethod
+    def from_df(cls, df):
+        return cls.from_records(df.to_records())
+
+    @classmethod
+    def from_mux_df(cls, df):
+        return cls.from_records(df.to_records(index=True),
+                                index=df.index.names)
 
     @property
     def coord_view(self):
-        return (self.df.lon.values.view('double'),
-                self.df.lat.values.view('double'),
-                self.df.time.values.view('int64'))
+        return (self.lon.values.view('double'),
+                self.lat.values.view('double'),
+                self.time.values.view('int64'))
 
     @property
     def lonlat(self):
-        return self.df[['lon', 'lat']].values
+        return self[['lon', 'lat']].values
 
     @property
     def lonlat_c(self):
@@ -61,8 +64,8 @@ class CycloneTrack:
 
     @property
     def lifetime_h(self):
-        return (self.df.time.values[-1]
-                - self.df.time.values[0]) / HOUR
+        return (self.time.values[-1]
+                - self.time.values[0]) / HOUR
 
     @property
     def gen_lys_dist_km(self):
@@ -79,67 +82,11 @@ class CycloneTrack:
 
     @property
     def max_vort(self):
-        return np.nanmax(self.df.vo.values)
+        return np.nanmax(self.vo.values)
 
     @property
     def mean_vort(self):
-        return np.nanmean(self.df.vo.values)
-
-
-class TrackSettings:
-    def __init__(self, fname_path=None):
-        self._fields = []
-        if isinstance(fname_path, Path):
-            with fname_path.open('r') as f:
-                conf_list = [line for line in f.read().split('\n')
-                             if not line.startswith('#') and len(line) > 0]
-            for line in conf_list:
-                if not line.startswith('#'):
-                    k, v = line.split('=')
-                    self._fields.append(k)
-                    try:
-                        self.__dict__.update({k: int(v)})
-                    except ValueError:
-                        try:
-                            self.__dict__.update({k: float(v)})
-                        except ValueError:
-                            v = str(v).strip('"').strip("'")
-                            self.__dict__.update({k: v})
-                # try:
-                #    exec(line, None, self.__dict__)
-                # except SyntaxError:
-                #    k, v = line.split('=')
-                #    self.__dict__.update({k: str(v)})
-                #    self._fields.append(k)
-        self._fields = tuple(self._fields)
-
-    def copy(self):
-        new = self.__class__()
-        new.__dict__ = self.__dict__.copy()
-        return new
-
-    @property
-    def extent(self):
-        extent_keys = ['lon1', 'lon2', 'lat1', 'lat2']
-        extent = []
-        for k in extent_keys:
-            try:
-                extent.append(getattr(self, k, None))
-            except AttributeError:
-                extent.append(None)
-        return extent
-
-    def __len__(self):
-        return len(self._fields)
-
-    def __repr__(self):
-        return ('Settings used for '
-                f'PMC tracking algorithm ({len(self)})')
-
-    def __str__(self):
-        summary = '\n'.join([f'{k} = {getattr(self, k, None)}'
-                             for k in self._fields])
-        return f'Settings used for PMC tracking algorithm:\n\n{summary}'
+        return np.nanmean(self.vo.values)
 
 
 class TrackRun:
@@ -152,17 +99,12 @@ class TrackRun:
         list of "vortrack" files
     conf: TrackSettings
         Configuration used for tracking
-
-    Methods
-    -------
-    load_data
-    extend
-    categorise
     """
     # Keywords for `pandas.read_csv()` used in `load_data()` method
     _load_kw = dict(delimiter='\s+',
                     names=['lon', 'lat', 'vo', 'time', 'area', 'vortex_type'],
                     parse_dates=['time'])
+    mux_names = ['track_id', 'row_id']
 
     def __init__(self, dirname=None):
         """
@@ -188,8 +130,8 @@ class TrackRun:
 
         # Define time step
         for ct in self.all:
-            if ct.df.shape[0] > 1:
-                self.tstep_h = ct.df.time.diff().values[-1] / HOUR
+            if ct.shape[0] > 1:
+                self.tstep_h = ct.time.diff().values[-1] / HOUR
                 break
 
     def __len__(self):
@@ -234,9 +176,12 @@ class TrackRun:
             pass
 
         # Load the tracks
-        self.all = []
+        _all = []
         for fname in self.filelist:
-            self.all.append(CycloneTrack(pd.read_csv(fname, **self._load_kw)))
+            _all.append(OctantTrack.from_df(pd.read_csv(fname,
+                                                        **self._load_kw)))
+        self.all = pd.concat(_all, range(len(_all)), names=self.mux_names)
+        del _all
 
     def extend(self, other, all=False, adapt_conf=True):
         """
@@ -349,8 +294,8 @@ class TrackRun:
 
             if good_flag:
                 self.Subset.good.append(ct)
-                if (((ct.df.vortex_type != 0).sum()
-                     / ct.df.shape[0] < type_thresh)
+                if (((ct.vortex_type != 0).sum()
+                     / ct.shape[0] < type_thresh)
                    and (ct.total_dist_km > dist_thresh)):
                     pmc_flag = True
                 if pmc_flag:
@@ -516,3 +461,59 @@ class TrackRun:
         # else:
         #     return self._density
         return dens
+
+
+class TrackSettings:
+    def __init__(self, fname_path=None):
+        self._fields = []
+        if isinstance(fname_path, Path):
+            with fname_path.open('r') as f:
+                conf_list = [line for line in f.read().split('\n')
+                             if not line.startswith('#') and len(line) > 0]
+            for line in conf_list:
+                if not line.startswith('#'):
+                    k, v = line.split('=')
+                    self._fields.append(k)
+                    try:
+                        self.__dict__.update({k: int(v)})
+                    except ValueError:
+                        try:
+                            self.__dict__.update({k: float(v)})
+                        except ValueError:
+                            v = str(v).strip('"').strip("'")
+                            self.__dict__.update({k: v})
+                # try:
+                #    exec(line, None, self.__dict__)
+                # except SyntaxError:
+                #    k, v = line.split('=')
+                #    self.__dict__.update({k: str(v)})
+                #    self._fields.append(k)
+        self._fields = tuple(self._fields)
+
+    def copy(self):
+        new = self.__class__()
+        new.__dict__ = self.__dict__.copy()
+        return new
+
+    @property
+    def extent(self):
+        extent_keys = ['lon1', 'lon2', 'lat1', 'lat2']
+        extent = []
+        for k in extent_keys:
+            try:
+                extent.append(getattr(self, k, None))
+            except AttributeError:
+                extent.append(None)
+        return extent
+
+    def __len__(self):
+        return len(self._fields)
+
+    def __repr__(self):
+        return ('Settings used for '
+                f'PMC tracking algorithm ({len(self)})')
+
+    def __str__(self):
+        summary = '\n'.join([f'{k} = {getattr(self, k, None)}'
+                             for k in self._fields])
+        return f'Settings used for PMC tracking algorithm:\n\n{summary}'
