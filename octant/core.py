@@ -104,7 +104,7 @@ class TrackRun:
     _load_kw = dict(delimiter='\s+',
                     names=['lon', 'lat', 'vo', 'time', 'area', 'vortex_type'],
                     parse_dates=['time'])
-    mux_names = ['track_id', 'row_id']
+    mux_names = ['track_idx', 'row_idx']
 
     def __init__(self, dirname=None):
         """
@@ -114,10 +114,9 @@ class TrackRun:
             Path to the directory with tracking output
             If present, load the data during on init
         """
-        self.Subset = TrackSubset([], [], [])
         self.dirname = dirname
         self.conf = None
-        self.all = []
+        self.data = pd.DataFrame()
         self.filelist = []
         self.sources = []
         # self._density = None
@@ -128,14 +127,15 @@ class TrackRun:
         elif self.dirname is not None:
             raise TypeError('dirname should be Path-like object')
 
-        # Define time step
-        for ct in self.all:
-            if ct.shape[0] > 1:
-                self.tstep_h = ct.time.diff().values[-1] / HOUR
-                break
+        if not self.data.empty:
+            # Define time step
+            for (_, ot) in self.data.groupby('track_idx'):
+                if ot.shape[0] > 1:
+                    self.tstep_h = ot.time.diff().values[-1] / HOUR
+                    break
 
     def __len__(self):
-        return len(self.all)
+        return self.data.index.get_level_values(0).to_series().nunique()
 
     def __repr__(self):
         s = '\n'.join(self.sources)
@@ -176,24 +176,32 @@ class TrackRun:
             pass
 
         # Load the tracks
-        _all = []
+        _data = []
         for fname in self.filelist:
-            _all.append(OctantTrack.from_df(pd.read_csv(fname,
-                                                        **self._load_kw)))
-        self.all = pd.concat(_all, range(len(_all)), names=self.mux_names)
-        del _all
+            _data.append(OctantTrack.from_df(pd.read_csv(fname,
+                                                         **self._load_kw)))
+        self.data = pd.concat(_data, keys=range(len(_data)),
+                              names=self.mux_names)
+        del _data
 
-    def extend(self, other, all=False, adapt_conf=True):
+    def extend(self, other, adapt_conf=True):
         """
         Extend the TrackRun by appending elements from another TrackRun
         Arguments
         ---------
         TODO
         """
-        if all:
-            self.all.extend(other.all)
-        for field in TrackSubset._fields:
-            getattr(self.Subset, field).extend(getattr(other.Subset, field))
+        new_data = pd.concat([self.data, other.data])
+        new_track_idx = new_data.index.get_level_values(0).to_series()
+        new_track_idx = new_track_idx.ne(new_track_idx.shift()).cumsum() - 1
+
+        mux = pd.MultiIndex.from_arrays([new_track_idx,
+                                         new_data.index.get_level_values(1)],
+                                        names=new_data.index.names)
+        new_data.set_index(mux)
+
+        self.data = new_data
+
         if adapt_conf and other.conf is not None:
             if self.conf is None:
                 self.conf = other.conf.copy()
