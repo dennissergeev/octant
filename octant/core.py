@@ -2,7 +2,6 @@
 """
 Classes and functions for the analysis of PMCTRACK output
 """
-from collections import namedtuple
 from pathlib import Path
 
 import numpy as np
@@ -14,8 +13,6 @@ from .utils import (great_circle, density_grid_rad, mask_tracks,
 
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
-
-TrackSubset = namedtuple('TrackSubset', ['good', 'pmc', 'polarlows'])
 
 
 class OctantSeries(pd.Series):
@@ -284,34 +281,34 @@ class TrackRun:
             lon2d_c = lon2d.astype('double', order='C')
             lat2d_c = lat2d.astype('double', order='C')
 
-        for ct in self.all:
+        for i, ot in self.gb:
             good_flag = True
             pmc_flag = False
             polarlow_flag = False
-            if (filt_by_time and ct.lifetime_h < time_thresh):
+            if (filt_by_time and ot.lifetime_h < time_thresh):
                 good_flag = False
             if (good_flag and filt_by_mask
                 and mask_tracks(themask_c, lon2d_c, lat2d_c,
-                                ct.lonlat_c, coast_rad * 1e3) > 0.5):
+                                ot.lonlat_c, coast_rad * 1e3) > 0.5):
                 good_flag = False
             if good_flag and filt_by_dist:
-                if ct.gen_lys_dist_km < dist_thresh:
+                if ot.gen_lys_dist_km < dist_thresh:
                     good_flag = False
 
             if good_flag:
-                self.Subset.good.append(ct)
-                if (((ct.vortex_type != 0).sum()
-                     / ct.shape[0] < type_thresh)
-                   and (ct.total_dist_km > dist_thresh)):
+                self.data.loc[i, 'cat'] = 1
+                if (((ot.vortex_type != 0).sum()
+                     / ot.shape[0] < type_thresh)
+                   and (ot.total_dist_km > dist_thresh)):
                     pmc_flag = True
                 if pmc_flag:
-                    self.Subset.pmc.append(ct)
+                    self.data.loc[i, 'cat'] = 2
                     if polarlow_flag:
-                        self.Subset.polarlows.append(ct)
+                        self.data.loc[i, 'cat'] = 3
 
     def match_tracks(self, others, subset='good', method='simple',
                      interpolate_to='other',
-                     thresh_dist=250., time_frac_thresh=0.5, beta=10.):
+                     thresh_dist=250., time_frac_thresh=0.5, beta=100.):
         """
         Match tracked vortices to a list of vortices from another data source
 
@@ -333,23 +330,24 @@ class TrackRun:
             and 'simple' methods
         beta: float, optional
             $\beta$ parameter used in 'bs2000' method
+            E.g. $\beta=100$ corresponds to 10 m/s average steering wind
         Returns
         -------
         match_pairs: list
             Index pairs of `other` vortices matching a vortex in `TrackRun`
             in a form (<index of `TrackRun` subset>, <index of `other`>)
         """
-        sub = self.Subset._asdict()[subset]
-        other_tracks = [CycloneTrack(df) for df in others]
+        sub_gb = self.data[self.data.cat == subset].groupby('track_idx')
+        other_tracks = [OctantTrack.from_df(df) for df in others]
         match_pairs = []
         if method == 'intersection':
-            for idx, ct in enumerate(sub):
-                for other_idx, other_ct in enumerate(other_tracks):
-                    times = other_ct.df.time.values
+            for idx, ot in sub_gb:
+                for other_idx, other_ot in enumerate(other_tracks):
+                    times = other_ot.time.values
                     time_match_thresh = (time_frac_thresh
                                          * (times[-1] - times[0]) / HOUR)
 
-                    intersect = pd.merge(other_ct.df, ct.df, how='inner',
+                    intersect = pd.merge(other_ot, ot, how='inner',
                                          left_on='time', right_on='time')
                     n_match_times = intersect.shape[0]
                     # = len(set(df.kt.values).intersection(set(stars_times)))
@@ -363,23 +361,18 @@ class TrackRun:
                        and prox_time > time_match_thresh):
                         match_pairs.append((idx, other_idx))
                         break
-                #     else:
-                #         _flag = False
-                # if _flag:
-                #     hits.append(df)
-                # else:
-                #     misses.append(df)
 
         elif method == 'simple':
+            # TODO: explain
             ll = ['lon', 'lat']
             match_pairs = []
             for other_idx, other_ct in enumerate(other_tracks):
                 candidates = []
-                for idx, ct in enumerate(sub):
+                for idx, ct in sub_gb:
                     if interpolate_to == 'other':
-                        df1, df2 = ct.df, other_ct.df
+                        df1, df2 = ct.copy(), other_ct
                     elif interpolate_to == 'self':
-                        df1, df2 = other_ct.df, ct.df
+                        df1, df2 = other_ct, ct.copy()
                     l_start = max(df1.time.values[0], df2.time.values[0])
                     e_end = min(df1.time.values[-1], df2.time.values[-1])
                     if (e_end - l_start) / HOUR > 0:
@@ -393,6 +386,7 @@ class TrackRun:
                                                          time=df2.time),
                                                index=df2.index)
                         new_df1 = (pd.concat([df1[[*ll, 'time']], tmp_df2],
+                                             ignore_index=True,
                                              keys='time')
                                    .set_index('time')
                                    .sort_index()
@@ -422,8 +416,8 @@ class TrackRun:
                     match_pairs.append((final_idx, other_idx))
 
         elif method == 'bs2000':
-            dist_matrix = np.empty((len(sub), len(others)))
-            for i, ct in enumerate(sub):
+            dist_matrix = np.empty((len(sub_gb), len(others)))
+            for i, (n, ct) in enumerate(sub_gb):
                 x1, y1, t1 = ct.coord_view
                 for j, other_ct in enumerate(other_tracks):
                     x2, y2, t2 = other_ct.coord_view
@@ -440,7 +434,6 @@ class TrackRun:
 
         return match_pairs
 
-    # @property
     def density(self, lon2d, lat2d, subset='good', method='radius', r=100.):
         """
         Create a density map
