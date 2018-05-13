@@ -14,6 +14,9 @@ from .utils import (great_circle, density_grid_rad, mask_tracks,
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
 
+CATS = dict(unknown=0, good=1, pmc=2, polarlow=3)
+COLUMNS = ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type', 'cat']
+
 
 class OctantSeries(pd.Series):
     @property
@@ -113,7 +116,8 @@ class TrackRun:
         """
         self.dirname = dirname
         self.conf = None
-        self.data = pd.DataFrame()
+        mux = pd.MultiIndex.from_arrays([[], []], names=self.mux_names)
+        self.data = OctantTrack(index=mux, columns=COLUMNS)
         self.filelist = []
         self.sources = []
         # self._density = None
@@ -143,6 +147,24 @@ class TrackRun:
         new.extend(self)
         new.extend(other)
         return new
+
+    def __getitem__(self, subset):
+        if subset == slice(None):
+            return self.data
+        else:
+            return self.data[self.data.cat >= CATS[subset]]
+
+    @property
+    def gb(self):
+        return self.data.groupby('track_idx')
+
+    def size(self, subset=None):
+        if subset is None:
+            # Equivalent to len(self)
+            sub = self.data
+        else:
+            sub = self.data[self.data.cat >= CATS[subset]]
+        return sub.index.get_level_values(0).to_series().nunique()
 
     def load_data(self, dirname, primary_only=True, conf_file=None):
         """
@@ -180,6 +202,7 @@ class TrackRun:
         self.data = pd.concat(_data, keys=range(len(_data)),
                               names=self.mux_names)
         del _data
+        self.data['cat'] = 0
 
     def extend(self, other, adapt_conf=True):
         """
@@ -217,11 +240,6 @@ class TrackRun:
                    filt_by_domain_bounds=True, coast_rad=30.):
         """
         Sort the loaded tracks by PMC/PL criteria
-
-        The function populates the following lists:
-          - self.Subset.good
-          - self.Subset.pmc
-          - self.Subset.polarlows
 
         Arguments
         ---------
@@ -296,15 +314,15 @@ class TrackRun:
                     good_flag = False
 
             if good_flag:
-                self.data.loc[i, 'cat'] = 1
+                self.data.loc[i, 'cat'] = CATS['good']
                 if (((ot.vortex_type != 0).sum()
                      / ot.shape[0] < type_thresh)
                    and (ot.total_dist_km > dist_thresh)):
                     pmc_flag = True
                 if pmc_flag:
-                    self.data.loc[i, 'cat'] = 2
+                    self.data.loc[i, 'cat'] = CATS['pmc']
                     if polarlow_flag:
-                        self.data.loc[i, 'cat'] = 3
+                        self.data.loc[i, 'cat'] = CATS['polarlow']
 
     def match_tracks(self, others, subset='good', method='simple',
                      interpolate_to='other',
@@ -317,7 +335,7 @@ class TrackRun:
         others: list
             List of `pandas.DataFrame`s
         subset: str, optional
-            Subset to match (good|pmc|polarlows)
+            Subset to match (good|pmc|polarlow)
         method: str, optional
             Method of matching (intersection|simple|bs2000)
         interpolate_to: str, optional
@@ -337,7 +355,8 @@ class TrackRun:
             Index pairs of `other` vortices matching a vortex in `TrackRun`
             in a form (<index of `TrackRun` subset>, <index of `other`>)
         """
-        sub_gb = self.data[self.data.cat == subset].groupby('track_idx')
+        sub_gb = self.data[self.data.cat >= CATS[subset]].groupby('track_idx')
+        # TODO: convert to a dataframe?
         other_tracks = [OctantTrack.from_df(df) for df in others]
         match_pairs = []
         if method == 'intersection':
@@ -447,15 +466,14 @@ class TrackRun:
         TODO
         """
         # if self._density is None or redo=True:
-        sub = self.Subset._asdict()[subset]
+        sub_gb = self.data[self.data.cat >= CATS[subset]].groupby('track_idx')
         lon2d_c = lon2d.astype('double', order='C')
         lat2d_c = lat2d.astype('double', order='C')
         r_metres = r * 1e3
         if method == 'radius':
             dens = np.zeros_like(lon2d_c)
-            for df in sub:
-                lonlat = df[['lon', 'lat']].values.astype('double', order='C')
-                dens = density_grid_rad(lon2d_c, lat2d_c, lonlat, dens,
+            for _, df in sub_gb:
+                dens = density_grid_rad(lon2d_c, lat2d_c, df.lonlat_c, dens,
                                         r_metres).base
         # else:
         #     return self._density
