@@ -2,7 +2,6 @@
 """
 Classes and functions for the analysis of PMCTRACK output
 """
-from collections import namedtuple
 from pathlib import Path
 
 import numpy as np
@@ -15,45 +14,49 @@ from .utils import (great_circle, density_grid_rad, mask_tracks,
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
 
-TrackSubset = namedtuple('TrackSubset', ['good', 'pmc', 'polarlows'])
+CATS = dict(unknown=0, good=1, pmc=2, polarlow=3)
+COLUMNS = ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type', 'cat']
 
 
-class CycloneTrack:
+class OctantSeries(pd.Series):
+    @property
+    def _constructor(self):
+        return OctantSeries
+
+
+class OctantTrack(pd.DataFrame):
     """
     Instance of cyclone track
 
-    Quasi-subclass of `pandas.DataFrame`
+    Subclass of `pandas.DataFrame`
     """
-    def __init__(self, df):
-        """
-        Arguments
-        ---------
-        df: pandas.DataFrame
-            DataFrame with the following required columns:
-             - time
-             - lon
-             - lat
-        """
-        self.df = df
+    def __init__(self, *args, **kw):
+        super(OctantTrack, self).__init__(*args, **kw)
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}\n{self.df.__repr__()}"
+    @property
+    def _constructor(self):
+        return OctantTrack  # replace with self.__class__?
 
-    def __str__(self):
-        return self.df.__str__()
+    _constructor_sliced = OctantSeries
 
-    def __len__(self):
-        return self.df.__len__()
+    @classmethod
+    def from_df(cls, df):
+        return cls.from_records(df.to_records(index=False))
+
+    @classmethod
+    def from_mux_df(cls, df):
+        return cls.from_records(df.to_records(index=True),
+                                index=df.index.names)
 
     @property
     def coord_view(self):
-        return (self.df.lon.values.view('double'),
-                self.df.lat.values.view('double'),
-                self.df.time.values.view('int64'))
+        return (self.lon.values.view('double'),
+                self.lat.values.view('double'),
+                self.time.values.view('int64'))
 
     @property
     def lonlat(self):
-        return self.df[['lon', 'lat']].values
+        return self[['lon', 'lat']].values
 
     @property
     def lonlat_c(self):
@@ -61,8 +64,8 @@ class CycloneTrack:
 
     @property
     def lifetime_h(self):
-        return (self.df.time.values[-1]
-                - self.df.time.values[0]) / HOUR
+        return (self.time.values[-1]
+                - self.time.values[0]) / HOUR
 
     @property
     def gen_lys_dist_km(self):
@@ -79,67 +82,11 @@ class CycloneTrack:
 
     @property
     def max_vort(self):
-        return np.nanmax(self.df.vo.values)
+        return np.nanmax(self.vo.values)
 
     @property
     def mean_vort(self):
-        return np.nanmean(self.df.vo.values)
-
-
-class TrackSettings:
-    def __init__(self, fname_path=None):
-        self._fields = []
-        if isinstance(fname_path, Path):
-            with fname_path.open('r') as f:
-                conf_list = [line for line in f.read().split('\n')
-                             if not line.startswith('#') and len(line) > 0]
-            for line in conf_list:
-                if not line.startswith('#'):
-                    k, v = line.split('=')
-                    self._fields.append(k)
-                    try:
-                        self.__dict__.update({k: int(v)})
-                    except ValueError:
-                        try:
-                            self.__dict__.update({k: float(v)})
-                        except ValueError:
-                            v = str(v).strip('"').strip("'")
-                            self.__dict__.update({k: v})
-                # try:
-                #    exec(line, None, self.__dict__)
-                # except SyntaxError:
-                #    k, v = line.split('=')
-                #    self.__dict__.update({k: str(v)})
-                #    self._fields.append(k)
-        self._fields = tuple(self._fields)
-
-    def copy(self):
-        new = self.__class__()
-        new.__dict__ = self.__dict__.copy()
-        return new
-
-    @property
-    def extent(self):
-        extent_keys = ['lon1', 'lon2', 'lat1', 'lat2']
-        extent = []
-        for k in extent_keys:
-            try:
-                extent.append(getattr(self, k, None))
-            except AttributeError:
-                extent.append(None)
-        return extent
-
-    def __len__(self):
-        return len(self._fields)
-
-    def __repr__(self):
-        return ('Settings used for '
-                f'PMC tracking algorithm ({len(self)})')
-
-    def __str__(self):
-        summary = '\n'.join([f'{k} = {getattr(self, k, None)}'
-                             for k in self._fields])
-        return f'Settings used for PMC tracking algorithm:\n\n{summary}'
+        return np.nanmean(self.vo.values)
 
 
 class TrackRun:
@@ -152,17 +99,12 @@ class TrackRun:
         list of "vortrack" files
     conf: TrackSettings
         Configuration used for tracking
-
-    Methods
-    -------
-    load_data
-    extend
-    categorise
     """
     # Keywords for `pandas.read_csv()` used in `load_data()` method
     _load_kw = dict(delimiter='\s+',
                     names=['lon', 'lat', 'vo', 'time', 'area', 'vortex_type'],
                     parse_dates=['time'])
+    mux_names = ['track_idx', 'row_idx']
 
     def __init__(self, dirname=None):
         """
@@ -172,10 +114,10 @@ class TrackRun:
             Path to the directory with tracking output
             If present, load the data during on init
         """
-        self.Subset = TrackSubset([], [], [])
         self.dirname = dirname
         self.conf = None
-        self.all = []
+        mux = pd.MultiIndex.from_arrays([[], []], names=self.mux_names)
+        self.data = OctantTrack(index=mux, columns=COLUMNS)
         self.filelist = []
         self.sources = []
         # self._density = None
@@ -186,14 +128,15 @@ class TrackRun:
         elif self.dirname is not None:
             raise TypeError('dirname should be Path-like object')
 
-        # Define time step
-        for ct in self.all:
-            if ct.df.shape[0] > 1:
-                self.tstep_h = ct.df.time.diff().values[-1] / HOUR
-                break
+        if not self.data.empty:
+            # Define time step
+            for (_, ot) in self.data.groupby('track_idx'):
+                if ot.shape[0] > 1:
+                    self.tstep_h = ot.time.diff().values[-1] / HOUR
+                    break
 
     def __len__(self):
-        return len(self.all)
+        return self.data.index.get_level_values(0).to_series().nunique()
 
     def __repr__(self):
         s = '\n'.join(self.sources)
@@ -204,6 +147,24 @@ class TrackRun:
         new.extend(self)
         new.extend(other)
         return new
+
+    def __getitem__(self, subset):
+        if subset == slice(None):
+            return self.data
+        else:
+            return self.data[self.data.cat >= CATS[subset]]
+
+    @property
+    def gb(self):
+        return self.data.groupby('track_idx')
+
+    def size(self, subset=None):
+        if subset is None:
+            # Equivalent to len(self)
+            sub = self.data
+        else:
+            sub = self.data[self.data.cat >= CATS[subset]]
+        return sub.index.get_level_values(0).to_series().nunique()
 
     def load_data(self, dirname, primary_only=True, conf_file=None):
         """
@@ -234,21 +195,31 @@ class TrackRun:
             pass
 
         # Load the tracks
-        self.all = []
+        _data = []
         for fname in self.filelist:
-            self.all.append(CycloneTrack(pd.read_csv(fname, **self._load_kw)))
+            _data.append(OctantTrack.from_df(pd.read_csv(fname,
+                                                         **self._load_kw)))
+        self.data = pd.concat(_data, keys=range(len(_data)),
+                              names=self.mux_names)
+        del _data
+        self.data['cat'] = 0
 
-    def extend(self, other, all=False, adapt_conf=True):
+    def extend(self, other, adapt_conf=True):
         """
         Extend the TrackRun by appending elements from another TrackRun
         Arguments
         ---------
         TODO
         """
-        if all:
-            self.all.extend(other.all)
-        for field in TrackSubset._fields:
-            getattr(self.Subset, field).extend(getattr(other.Subset, field))
+        new_data = pd.concat([self.data, other.data])
+        new_track_idx = new_data.index.get_level_values(0).to_series()
+        new_track_idx = new_track_idx.ne(new_track_idx.shift()).cumsum() - 1
+
+        mux = pd.MultiIndex.from_arrays([new_track_idx,
+                                         new_data.index.get_level_values(1)],
+                                        names=new_data.index.names)
+        self.data = new_data.set_index(mux)
+
         if adapt_conf and other.conf is not None:
             if self.conf is None:
                 self.conf = other.conf.copy()
@@ -269,11 +240,6 @@ class TrackRun:
                    filt_by_domain_bounds=True, coast_rad=30.):
         """
         Sort the loaded tracks by PMC/PL criteria
-
-        The function populates the following lists:
-          - self.Subset.good
-          - self.Subset.pmc
-          - self.Subset.polarlows
 
         Arguments
         ---------
@@ -333,34 +299,34 @@ class TrackRun:
             lon2d_c = lon2d.astype('double', order='C')
             lat2d_c = lat2d.astype('double', order='C')
 
-        for ct in self.all:
+        for i, ot in self.gb:
             good_flag = True
             pmc_flag = False
             polarlow_flag = False
-            if (filt_by_time and ct.lifetime_h < time_thresh):
+            if (filt_by_time and ot.lifetime_h < time_thresh):
                 good_flag = False
             if (good_flag and filt_by_mask
                 and mask_tracks(themask_c, lon2d_c, lat2d_c,
-                                ct.lonlat_c, coast_rad * 1e3) > 0.5):
+                                ot.lonlat_c, coast_rad * 1e3) > 0.5):
                 good_flag = False
             if good_flag and filt_by_dist:
-                if ct.gen_lys_dist_km < dist_thresh:
+                if ot.gen_lys_dist_km < dist_thresh:
                     good_flag = False
 
             if good_flag:
-                self.Subset.good.append(ct)
-                if (((ct.df.vortex_type != 0).sum()
-                     / ct.df.shape[0] < type_thresh)
-                   and (ct.total_dist_km > dist_thresh)):
+                self.data.loc[i, 'cat'] = CATS['good']
+                if (((ot.vortex_type != 0).sum()
+                     / ot.shape[0] < type_thresh)
+                   and (ot.total_dist_km > dist_thresh)):
                     pmc_flag = True
                 if pmc_flag:
-                    self.Subset.pmc.append(ct)
+                    self.data.loc[i, 'cat'] = CATS['pmc']
                     if polarlow_flag:
-                        self.Subset.polarlows.append(ct)
+                        self.data.loc[i, 'cat'] = CATS['polarlow']
 
     def match_tracks(self, others, subset='good', method='simple',
                      interpolate_to='other',
-                     thresh_dist=250., time_frac_thresh=0.5, beta=10.):
+                     thresh_dist=250., time_frac_thresh=0.5, beta=100.):
         """
         Match tracked vortices to a list of vortices from another data source
 
@@ -369,7 +335,7 @@ class TrackRun:
         others: list
             List of `pandas.DataFrame`s
         subset: str, optional
-            Subset to match (good|pmc|polarlows)
+            Subset to match (good|pmc|polarlow)
         method: str, optional
             Method of matching (intersection|simple|bs2000)
         interpolate_to: str, optional
@@ -382,23 +348,25 @@ class TrackRun:
             and 'simple' methods
         beta: float, optional
             $\beta$ parameter used in 'bs2000' method
+            E.g. $\beta=100$ corresponds to 10 m/s average steering wind
         Returns
         -------
         match_pairs: list
             Index pairs of `other` vortices matching a vortex in `TrackRun`
             in a form (<index of `TrackRun` subset>, <index of `other`>)
         """
-        sub = self.Subset._asdict()[subset]
-        other_tracks = [CycloneTrack(df) for df in others]
+        sub_gb = self.data[self.data.cat >= CATS[subset]].groupby('track_idx')
+        # TODO: convert to a dataframe?
+        other_tracks = [OctantTrack.from_df(df) for df in others]
         match_pairs = []
         if method == 'intersection':
-            for idx, ct in enumerate(sub):
-                for other_idx, other_ct in enumerate(other_tracks):
-                    times = other_ct.df.time.values
+            for idx, ot in sub_gb:
+                for other_idx, other_ot in enumerate(other_tracks):
+                    times = other_ot.time.values
                     time_match_thresh = (time_frac_thresh
                                          * (times[-1] - times[0]) / HOUR)
 
-                    intersect = pd.merge(other_ct.df, ct.df, how='inner',
+                    intersect = pd.merge(other_ot, ot, how='inner',
                                          left_on='time', right_on='time')
                     n_match_times = intersect.shape[0]
                     # = len(set(df.kt.values).intersection(set(stars_times)))
@@ -412,23 +380,18 @@ class TrackRun:
                        and prox_time > time_match_thresh):
                         match_pairs.append((idx, other_idx))
                         break
-                #     else:
-                #         _flag = False
-                # if _flag:
-                #     hits.append(df)
-                # else:
-                #     misses.append(df)
 
         elif method == 'simple':
+            # TODO: explain
             ll = ['lon', 'lat']
             match_pairs = []
             for other_idx, other_ct in enumerate(other_tracks):
                 candidates = []
-                for idx, ct in enumerate(sub):
+                for idx, ct in sub_gb:
                     if interpolate_to == 'other':
-                        df1, df2 = ct.df, other_ct.df
+                        df1, df2 = ct.copy(), other_ct
                     elif interpolate_to == 'self':
-                        df1, df2 = other_ct.df, ct.df
+                        df1, df2 = other_ct, ct.copy()
                     l_start = max(df1.time.values[0], df2.time.values[0])
                     e_end = min(df1.time.values[-1], df2.time.values[-1])
                     if (e_end - l_start) / HOUR > 0:
@@ -442,6 +405,7 @@ class TrackRun:
                                                          time=df2.time),
                                                index=df2.index)
                         new_df1 = (pd.concat([df1[[*ll, 'time']], tmp_df2],
+                                             ignore_index=True,
                                              keys='time')
                                    .set_index('time')
                                    .sort_index()
@@ -471,8 +435,8 @@ class TrackRun:
                     match_pairs.append((final_idx, other_idx))
 
         elif method == 'bs2000':
-            dist_matrix = np.empty((len(sub), len(others)))
-            for i, ct in enumerate(sub):
+            dist_matrix = np.empty((len(sub_gb), len(others)))
+            for i, (n, ct) in enumerate(sub_gb):
                 x1, y1, t1 = ct.coord_view
                 for j, other_ct in enumerate(other_tracks):
                     x2, y2, t2 = other_ct.coord_view
@@ -489,7 +453,6 @@ class TrackRun:
 
         return match_pairs
 
-    # @property
     def density(self, lon2d, lat2d, subset='good', method='radius', r=100.):
         """
         Create a density map
@@ -503,16 +466,71 @@ class TrackRun:
         TODO
         """
         # if self._density is None or redo=True:
-        sub = self.Subset._asdict()[subset]
+        sub_gb = self.data[self.data.cat >= CATS[subset]].groupby('track_idx')
         lon2d_c = lon2d.astype('double', order='C')
         lat2d_c = lat2d.astype('double', order='C')
         r_metres = r * 1e3
         if method == 'radius':
             dens = np.zeros_like(lon2d_c)
-            for df in sub:
-                lonlat = df[['lon', 'lat']].values.astype('double', order='C')
-                dens = density_grid_rad(lon2d_c, lat2d_c, lonlat, dens,
+            for _, df in sub_gb:
+                dens = density_grid_rad(lon2d_c, lat2d_c, df.lonlat_c, dens,
                                         r_metres).base
         # else:
         #     return self._density
         return dens
+
+
+class TrackSettings:
+    def __init__(self, fname_path=None):
+        self._fields = []
+        if isinstance(fname_path, Path):
+            with fname_path.open('r') as f:
+                conf_list = [line for line in f.read().split('\n')
+                             if not line.startswith('#') and len(line) > 0]
+            for line in conf_list:
+                if not line.startswith('#'):
+                    k, v = line.split('=')
+                    self._fields.append(k)
+                    try:
+                        self.__dict__.update({k: int(v)})
+                    except ValueError:
+                        try:
+                            self.__dict__.update({k: float(v)})
+                        except ValueError:
+                            v = str(v).strip('"').strip("'")
+                            self.__dict__.update({k: v})
+                # try:
+                #    exec(line, None, self.__dict__)
+                # except SyntaxError:
+                #    k, v = line.split('=')
+                #    self.__dict__.update({k: str(v)})
+                #    self._fields.append(k)
+        self._fields = tuple(self._fields)
+
+    def copy(self):
+        new = self.__class__()
+        new.__dict__ = self.__dict__.copy()
+        return new
+
+    @property
+    def extent(self):
+        extent_keys = ['lon1', 'lon2', 'lat1', 'lat2']
+        extent = []
+        for k in extent_keys:
+            try:
+                extent.append(getattr(self, k, None))
+            except AttributeError:
+                extent.append(None)
+        return extent
+
+    def __len__(self):
+        return len(self._fields)
+
+    def __repr__(self):
+        return ('Settings used for '
+                f'PMC tracking algorithm ({len(self)})')
+
+    def __str__(self):
+        summary = '\n'.join([f'{k} = {getattr(self, k, None)}'
+                             for k in self._fields])
+        return f'Settings used for PMC tracking algorithm:\n\n{summary}'
