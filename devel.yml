@@ -1,4 +1,4 @@
-name: octant_devel
+name: octant
 channels:
 - conda-forge
 dependencies:
