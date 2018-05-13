@@ -455,7 +455,8 @@ class TrackRun:
                     match_pairs.append((final_idx, other_idx))
 
         elif method == 'bs2000':
-            dist_matrix = np.empty((len(sub_gb), len(others)))
+            dist_matrix = np.full((len(sub_gb), len(others)), 9e20)
+            sub_list = [i[0] for i in list(sub_gb)]
             for i, (n, ct) in enumerate(sub_gb):
                 x1, y1, t1 = ct.coord_view
                 for j, other_ct in enumerate(other_tracks):
@@ -466,7 +467,7 @@ class TrackRun:
             for i, idx1 in enumerate(np.nanargmin(dist_matrix, axis=0)):
                 for j, idx2 in enumerate(np.nanargmin(dist_matrix, axis=1)):
                     if i == idx2 and j == idx1:
-                        match_pairs.append((idx1, idx2))
+                        match_pairs.append((sub_list[idx1], idx2))
 
         else:
             raise ValueError(f'Unknown method: {method}')
