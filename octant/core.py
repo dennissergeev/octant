@@ -88,6 +88,29 @@ class OctantTrack(pd.DataFrame):
     def mean_vort(self):
         return np.nanmean(self.vo.values)
 
+    def plot_track(self, ax=None, **kwargs):
+        """
+        Plot cyclone track using as plot function from plotting submodule.
+
+        Closed circle shows the beginning, open circle - the end of the track.
+
+        Arguments
+        ---------
+        ax: matplotlib axes object, optional
+            Axes in which to plot the track
+            If not given, a new figure with cartopy geoaxes is created
+        transform: matplotlib transform, optional
+            Default: cartopy.crs.PlateCarree()
+        kwargs: other keyword arguments
+            Options to pass to matplotlib plot() function
+        Returns
+        -------
+        ax: matplotlib axes object
+            The same ax as the input ax (if given), or a newly created axes
+        """
+        from .plotting import plot
+        return plot(self, ax=ax, **kwargs)
+
 
 class TrackRun:
     """
@@ -149,22 +172,19 @@ class TrackRun:
         return new
 
     def __getitem__(self, subset):
-        if subset == slice(None):
+        if subset in [slice(None), None, 'all']:
             return self.data
         else:
             return self.data[self.data.cat >= CATS[subset]]
 
     @property
     def gb(self):
+        """ Group by track index """
         return self.data.groupby('track_idx')
 
     def size(self, subset=None):
-        if subset is None:
-            # Equivalent to len(self)
-            sub = self.data
-        else:
-            sub = self.data[self.data.cat >= CATS[subset]]
-        return sub.index.get_level_values(0).to_series().nunique()
+        """ Size of subset of tracks """
+        return self[subset].index.get_level_values(0).to_series().nunique()
 
     def load_data(self, dirname, primary_only=True, conf_file=None):
         """
