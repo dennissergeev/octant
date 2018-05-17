@@ -198,7 +198,8 @@ class TrackRun:
         primary_only: bool, optional
             Load only "primary" vortices and skip the merged ones
         """
-
+        if not dirname.is_dir():
+            raise Exception(f'No such directory: {dirname}')
         if primary_only:
             wcard = 'vortrack*0001.txt'
         else:
@@ -208,21 +209,22 @@ class TrackRun:
 
         # Load configuration
         if conf_file is None:
-            conf_file = list(dirname.glob('*.conf'))[0]
-        try:
-            self.conf = TrackSettings(conf_file)
-        except (IndexError, AttributeError):
-            pass
+            try:
+                conf_file = list(dirname.glob('*.conf'))[0]
+                self.conf = TrackSettings(conf_file)
+            except (IndexError, AttributeError):
+                pass
 
         # Load the tracks
         _data = []
         for fname in self.filelist:
             _data.append(OctantTrack.from_df(pd.read_csv(fname,
                                                          **self._load_kw)))
-        self.data = pd.concat(_data, keys=range(len(_data)),
-                              names=self.mux_names)
+        if len(_data) > 0:
+            self.data = pd.concat(_data, keys=range(len(_data)),
+                                  names=self.mux_names)
+            self.data['cat'] = 0
         del _data
-        self.data['cat'] = 0
 
     def extend(self, other, adapt_conf=True):
         """
