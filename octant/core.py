@@ -10,6 +10,7 @@ import xarray as xr
 
 from .utils import (great_circle, density_grid_rad, mask_tracks,
                     distance_metric, total_dist)
+from .exceptions import ArgumentError, LoadError
 
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
@@ -149,7 +150,7 @@ class TrackRun:
             # as a list of `pandas.DataFrame`s
             self.load_data(self.dirname)
         elif self.dirname is not None:
-            raise TypeError('dirname should be Path-like object')
+            raise LoadError('dirname should be Path-like object')
 
         if not self.data.empty:
             # Define time step
@@ -199,7 +200,7 @@ class TrackRun:
             Load only "primary" vortices and skip the merged ones
         """
         if not dirname.is_dir():
-            raise Exception(f'No such directory: {dirname}')
+            raise LoadError(f'No such directory: {dirname}')
         if primary_only:
             wcard = 'vortrack*0001.txt'
         else:
@@ -472,7 +473,7 @@ class TrackRun:
                         match_pairs.append((sub_list[idx1], idx2))
 
         else:
-            raise ValueError(f'Unknown method: {method}')
+            raise ArgumentError(f'Unknown method: {method}')
 
         return match_pairs
 
