@@ -8,7 +8,9 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from .utils import (great_circle, density_grid_rad, mask_tracks,
+from .utils import (great_circle, mask_tracks,
+                    track_density_rad, track_density_cell,
+                    point_density_rad, point_density_cell,
                     distance_metric, total_dist)
 from .exceptions import ArgumentError, LoadError
 
@@ -62,6 +64,14 @@ class OctantTrack(pd.DataFrame):
     @property
     def lonlat_c(self):
         return self.lonlat.astype('double', order='C')
+
+    @property
+    def tridlonlat(self):
+        return self[['track_idx', 'lon', 'lat']].values
+
+    @property
+    def tridlonlat_c(self):
+        return self.tridlonlat.astype('double', order='C')
 
     @property
     def lifetime_h(self):
@@ -129,6 +139,7 @@ class TrackRun:
                     names=['lon', 'lat', 'vo', 'time', 'area', 'vortex_type'],
                     parse_dates=['time'])
     mux_names = ['track_idx', 'row_idx']
+    cats = CATS
 
     def __init__(self, dirname=None):
         """
@@ -176,7 +187,7 @@ class TrackRun:
         if subset in [slice(None), None, 'all']:
             return self.data
         else:
-            return self.data[self.data.cat >= CATS[subset]]
+            return self.data[self.data.cat >= self.cats[subset]]
 
     @property
     def gb(self):
@@ -276,7 +287,7 @@ class TrackRun:
             travelled or distance between genesis and lysis.
         filt_by_dist: bool, optional
             Filter by the distance threshold
-        lsm: xarray.DataArray of shape 2, optional
+        lsm: xarray.DataArray of rank 2, optional
             Land-sea mask
             If present, tracks that spend > 0.5 of their lifetime
             within `coast_rad` radius from the coastline are discarded
@@ -337,15 +348,15 @@ class TrackRun:
                     good_flag = False
 
             if good_flag:
-                self.data.loc[i, 'cat'] = CATS['good']
+                self.data.loc[i, 'cat'] = self.cats['good']
                 if (((ot.vortex_type != 0).sum()
                      / ot.shape[0] < type_thresh)
                    and (ot.total_dist_km > dist_thresh)):
                     pmc_flag = True
                 if pmc_flag:
-                    self.data.loc[i, 'cat'] = CATS['pmc']
+                    self.data.loc[i, 'cat'] = self.cats['pmc']
                     if polarlow_flag:
-                        self.data.loc[i, 'cat'] = CATS['polarlow']
+                        self.data.loc[i, 'cat'] = self.cats['polarlow']
 
     def match_tracks(self, others, subset='good', method='simple',
                      interpolate_to='other',
@@ -378,7 +389,8 @@ class TrackRun:
             Index pairs of `other` vortices matching a vortex in `TrackRun`
             in a form (<index of `TrackRun` subset>, <index of `other`>)
         """
-        sub_gb = self.data[self.data.cat >= CATS[subset]].groupby('track_idx')
+        sub_gb = self.data[self.data.cat
+                           >= self.cats[subset]].groupby('track_idx')
         # TODO: convert to a dataframe?
         other_tracks = [OctantTrack.from_df(df) for df in others]
         match_pairs = []
@@ -477,30 +489,79 @@ class TrackRun:
 
         return match_pairs
 
-    def density(self, lon2d, lat2d, subset='good', method='radius', r=100.):
+    def point_density(self, lon2d, lat2d, subset='good', method='radius',
+                      r=100.):
         """
-        Create a density map
+        Calculate point density for a given lon-lat grid
+
+        Unlike `track_density`, this method counts all points of all tracks.
 
         Arguments
         ---------
+        lon2d: array of shape (M, N)
+            Longitude grid
+        lat2d: array of shape (M, N)
+            Latitude grid
+        subset: str, optional
+            Subset to match (good|pmc|polarlow)
+        method: str, optional
+            Method to calculate density (radius|cell)
         r: float, optional
             Radius in km
             Used when method='radius'
-        lon2d, lat2d
-        TODO
+        Returns
+        -------
+        dens: array of shape (M, N)
+            Numpy array of track density
         """
         # if self._density is None or redo=True:
-        sub_gb = self.data[self.data.cat >= CATS[subset]].groupby('track_idx')
+        sub_data = self.data[self.data.cat >= self.cats[subset]].lonlat_c
         lon2d_c = lon2d.astype('double', order='C')
         lat2d_c = lat2d.astype('double', order='C')
-        r_metres = r * 1e3
         if method == 'radius':
-            dens = np.zeros_like(lon2d_c)
-            for _, df in sub_gb:
-                dens = density_grid_rad(lon2d_c, lat2d_c, df.lonlat_c, dens,
-                                        r_metres).base
+            r_metres = r * 1e3
+            dens = point_density_rad(lon2d_c, lat2d_c, sub_data, r_metres).base
+        elif method == 'cell':
+            dens = point_density_cell(lon2d_c, lat2d_c, sub_data).base
         # else:
         #     return self._density
+        return dens
+
+    def track_density(self, lon2d, lat2d, subset='good', method='radius',
+                      r=100.):
+        """
+        Calculate track density for a given lon-lat grid
+
+        Unlike `point_density`, this method counts each track only once for
+        a given cell or circle. In other words, if more than 1 point of a track
+        is within a radius (for method=radius), those extra points are ignored.
+
+        Arguments
+        ---------
+        lon2d: array of shape (M, N)
+            Longitude grid
+        lat2d: array of shape (M, N)
+            Latitude grid
+        subset: str, optional
+            Subset to match (good|pmc|polarlow)
+        method: str, optional
+            Method to calculate density (radius|cell)
+        r: float, optional
+            Radius in km
+            Used when method='radius'
+        Returns
+        -------
+        dens: array of shape (M, N)
+            Numpy array of track density
+        """
+        sub_data = self.data[self.data.cat >= self.cats[subset]].tridlonlat_c
+        lon2d_c = lon2d.astype('double', order='C')
+        lat2d_c = lat2d.astype('double', order='C')
+        if method == 'radius':
+            r_metres = r * 1e3
+            dens = track_density_rad(lon2d_c, lat2d_c, sub_data, r_metres).base
+        elif method == 'cell':
+            dens = track_density_cell(lon2d_c, lat2d_c, sub_data).base
         return dens
 
 

@@ -94,11 +94,35 @@ cpdef double total_dist(double[:, ::1] lonlat):
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)  # Deactivate negative indexing
-cpdef double[:, ::1] density_grid_rad(double[:, ::1] lon2d,
-                                      double[:, ::1] lat2d,
-                                      double[:, ::1] lonlat,
-                                      double[:, ::1] count,
-                                      double rad):
+cpdef double[:, ::1] point_density_cell(double[:, ::1] lon2d,
+                                        double[:, ::1] lat2d,
+                                        double[:, ::1] lonlat):
+    """
+    Calculate density based on lon-lat boxes [WIP]
+    """
+    cdef int i, j, p
+    cdef int jmax = lat2d.shape[0]-1
+    cdef int imax = lon2d.shape[1]-1
+    cdef int pmax = lonlat.shape[0]
+    cdef double[:, ::1] count = np.zeros([jmax+1, imax+1], dtype=np.double)
+
+    for p in range(pmax):
+        for j in range(jmax):
+            for i in range(imax):
+                if ((lon2d[j, i  ] <= lonlat[p, 0])
+                and (lon2d[j, i+1] >  lonlat[p, 0])
+                and (lat2d[j, i  ] >  lonlat[p, 1])
+                and (lat2d[j+1, i] <= lonlat[p, 1])):
+                    count[j, i] = count[j, i] + 1
+    return count
+
+
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing
+cpdef double[:, ::1] point_density_rad(double[:, ::1] lon2d,
+                                       double[:, ::1] lat2d,
+                                       double[:, ::1] lonlat,
+                                       double rad):
     """
     Calculate density based on radius [WIP]
     """
@@ -106,6 +130,7 @@ cpdef double[:, ::1] density_grid_rad(double[:, ::1] lon2d,
     cdef int jmax = lat2d.shape[0]
     cdef int imax = lon2d.shape[1]
     cdef int pmax = lonlat.shape[0]
+    cdef double[:, ::1] count = np.zeros([jmax, imax], dtype=np.double)
     for p in range(pmax):
         for j in range(jmax):
             for i in range(imax):
@@ -117,26 +142,58 @@ cpdef double[:, ::1] density_grid_rad(double[:, ::1] lon2d,
 
 @cython.boundscheck(False)  # Deactivate bounds checking
 @cython.wraparound(False)  # Deactivate negative indexing
-cpdef double[:, ::1] density_grid_each(double[:, ::1] lon2d,
-                                       double[:, ::1] lat2d,
-                                       double[:, ::1] lonlat,
-                                       double[:, ::1] count):
-    """
-    Calculate density based on lon-lat boxes [WIP]
-    """
+cpdef double[:, ::1] track_density_cell(double[:, ::1] lon2d,
+                                        double[:, ::1] lat2d,
+                                        double[:, ::1] id_lon_lat):
     cdef int i, j, p
-    cdef int jmax = lat2d.shape[0]-1
-    cdef int imax = lon2d.shape[1]-1
-    cdef int pmax = lonlat.shape[0]
+    cdef int jmax = lat2d.shape[0]
+    cdef int imax = lon2d.shape[1]
+    cdef int pmax = id_lon_lat.shape[0]
+    cdef int track_idx
+    cdef int prev_track_idx
 
-    for p in range(pmax):
-        for j in range(jmax):
-            for i in range(imax):
-                if ((lon2d[j, i  ] <= lonlat[p, 0])
-                and (lon2d[j, i+1] >  lonlat[p, 0])
-                and (lat2d[j, i  ] >  lonlat[p, 1])
-                and (lat2d[j+1, i] <= lonlat[p, 1])):
-                    count[j, i] = count[j, i] + 1
+    cdef double[:, ::1] count = np.zeros([jmax, imax], dtype=np.double)
+
+    for j in range(jmax):
+        for i in range(imax):
+            prev_track_idx = -1
+            for p in range(pmax):
+                track_idx = <int>id_lon_lat[p, 0]
+                if prev_track_idx != track_idx:
+                    if ((lon2d[j, i  ] <= id_lon_lat[p, 1])
+                    and (lon2d[j, i+1] >  id_lon_lat[p, 1])
+                    and (lat2d[j, i  ] >  id_lon_lat[p, 2])
+                    and (lat2d[j+1, i] <= id_lon_lat[p, 2])):
+                        count[j, i] = count[j, i] + 1
+                        prev_track_idx = track_idx
+    return count
+
+
+@cython.boundscheck(False)  # Deactivate bounds checking
+@cython.wraparound(False)  # Deactivate negative indexing
+cpdef double[:, ::1] track_density_rad(double[:, ::1] lon2d,
+                                       double[:, ::1] lat2d,
+                                       double[:, ::1] id_lon_lat,
+                                       double rad):
+    cdef int i, j, p
+    cdef int jmax = lat2d.shape[0]
+    cdef int imax = lon2d.shape[1]
+    cdef int pmax = id_lon_lat.shape[0]
+    cdef int track_idx
+    cdef int prev_track_idx
+
+    cdef double[:, ::1] count = np.zeros([jmax, imax], dtype=np.double)
+
+    for j in range(jmax):
+        for i in range(imax):
+            prev_track_idx = -1
+            for p in range(pmax):
+                track_idx = <int>id_lon_lat[p, 0]
+                if prev_track_idx != track_idx:
+                    if _great_circle(id_lon_lat[p, 1], lon2d[j, i],
+                                     id_lon_lat[p, 2], lat2d[j, i]) <= rad:
+                        count[j, i] = count[j, i] + 1
+                        prev_track_idx = track_idx
     return count
 
 
