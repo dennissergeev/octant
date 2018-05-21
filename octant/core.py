@@ -210,7 +210,8 @@ class TrackRun:
         """ Size of subset of tracks """
         return self[subset].index.get_level_values(0).to_series().nunique()
 
-    def load_data(self, dirname, primary_only=True, conf_file=None):
+    def load_data(self, dirname, primary_only=True, conf_file=None,
+                  scale_vo=1e-3):
         """
         Arguments
         ---------
@@ -221,6 +222,10 @@ class TrackRun:
             made to find a .conf file in the `dirname` directory
         primary_only: bool, optional
             Load only "primary" vortices and skip the merged ones
+        scale_vo: float, optional
+            Scale vorticity values column to SI units (s-1)
+            By default PMCTRACK writes out vorticity in (x10-3 s-1),
+            so scale_vo default is 1e-3. To switch off scaling, set it to 1.
         """
         if not dirname.is_dir():
             raise LoadError(f'No such directory: {dirname}')
@@ -248,6 +253,8 @@ class TrackRun:
             self.data = pd.concat(_data, keys=range(len(_data)),
                                   names=self.mux_names)
             self.data['cat'] = 0
+            # Scale vorticity to (s-1)
+            self.data['vo'] *= scale_vo
         del _data
 
     def extend(self, other, adapt_conf=True):
@@ -329,9 +336,9 @@ class TrackRun:
             Filter by vorticity maximum (strong criteria)
             [Watanabe et al., 2016, p.2509]
         vort_thresh0: float, optional
-            Vorticity threshold for strong filtering
+            Vorticity threshold for strong filtering (s-1)
         vort_thresh1: float, optional
-            Higher vorticity threshold for strong filtering
+            Higher vorticity threshold for strong filtering (s-1)
         """
         # Save filtering params just in case
         self._cat_params = {k: v for k, v in locals().items() if k != 'self'}
