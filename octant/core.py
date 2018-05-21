@@ -17,7 +17,7 @@ from .exceptions import ArgumentError, LoadError, NotYetImplementedError
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
 
-CATS = dict(unknown=0, good=1, pmc=2, polarlow=3)
+CATS = dict(unknown=0, basic=1, moderate=2, strong=3)
 COLUMNS = ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type', 'cat']
 
 
@@ -279,25 +279,37 @@ class TrackRun:
             if getattr(other, 'tstep_h', None) is not None:
                 assert self.tstep_h == other.tstep_h
 
-    def categorise(self, time_thresh=6, filt_by_time=True,
-                   dist_thresh=300., filt_by_dist=True,
-                   type_thresh=0.2, lsm=None, filt_by_land=True,
-                   filt_by_domain_bounds=True, coast_rad=30.):
+    def categorise(self, filt_by_time=True, filt_by_dist=True,
+                   filt_by_vort=True, filt_by_domain_bounds=True,
+                   filt_by_land=True, time_thresh0=6, time_thresh1=9,
+                   dist_thresh=300., type_thresh=0.2, lsm=None, coast_rad=50.,
+                   vort_thresh0=3e-4, vort_thresh1=4.5e-4):
         """
-        Sort the loaded tracks by PMC/PL criteria
+        Classify the loaded tracks by different criteria:
+         - lifetime
+         - proximity to land or domain boundaries
+         - distance
+         - type
+         - vorticity maximum
 
         Arguments
         ---------
-        time_thresh: int, optional
-            Time threshold (hours) for basic filtering
         filt_by_time: bool, optional
             Filter by the time threshold
+        time_thresh0: int, optional
+            Time threshold (hours) for basic filtering
+        time_thresh1: int, optional
+            Time threshold (hours) for strong filtering
+        filt_by_dist: bool, optional
+            Filter by the distance threshold (dist. between genesis and lysis)
         dist_thresh: float, optional
             Distance in km
-            Used for classifying vortices depending on the total distance
-            travelled or distance between genesis and lysis.
-        filt_by_dist: bool, optional
-            Filter by the distance threshold
+            Used for classifying vortices by distance between genesis and lysis
+        filt_by_land: bool, optional
+            Filter by the proximity to coast given by the land mask (`lsm`)
+        filt_by_domain_bounds: bool, optional
+            Filter by the proximity to domain boundarie, which are taken from
+            the `self.conf` instance if present: lon1, lon2, lat2, lat2
         lsm: xarray.DataArray of rank 2, optional
             Land-sea mask
             If present, tracks that spend > 0.5 of their lifetime
@@ -305,11 +317,6 @@ class TrackRun:
         coast_rad: float, optional
             Radius in km
             Used for discarding vortices stuck near the coastline
-        filt_by_land: bool, optional
-            Filter by the proximity to coast given by the land mask (`lsm`)
-        filt_by_domain_bounds: bool, optional
-            Filter by the proximity to domain boundarie, which are taken from
-            the `self.conf` instance if present: lon1, lon2, lat2, lat2
         type_thresh: float, optional
             Ratio of time steps when `vortex_type` is not equal to 0 (PMC) to
             the total lifetime of the vortex. Should be within 0-1 range.
@@ -317,6 +324,13 @@ class TrackRun:
             vortex is considered a synoptic-scale low or a cold front is more
             than one-seventh of the whole lifetime of the PMC, then the PMC is
             excluded as a synoptic-scale disturbance [Watanabe et al., 2016].
+        filt_by_vort: bool, optional
+            Filter by vorticity maximum (strong criteria)
+            [Watanabe et al., 2016, p.2509]
+        vort_thresh0: float, optional
+            Vorticity threshold for strong filtering
+        vort_thresh1: float, optional
+            Higher vorticity threshold for strong filtering
         """
         filt_by_mask = False
         if isinstance(lsm, xr.DataArray):
@@ -345,31 +359,43 @@ class TrackRun:
             lat2d_c = lat2d.astype('double', order='C')
 
         for i, ot in self.gb:
-            good_flag = True
-            pmc_flag = False
-            polarlow_flag = False
-            if (filt_by_time and ot.lifetime_h < time_thresh):
-                good_flag = False
-            if (good_flag and filt_by_mask
+            basic_flag = True
+            moderate_flag = True
+            strong_flag = True
+            # 1. Minimal filter
+            # 1.1. Filter by duration threshold
+            if (filt_by_time and (ot.lifetime_h < time_thresh0)):
+                basic_flag = False
+            # 1.2. Filter by land mask and domain boundaries
+            if (basic_flag and filt_by_mask
                 and mask_tracks(themask_c, lon2d_c, lat2d_c,
                                 ot.lonlat_c, coast_rad * 1e3) > 0.5):
-                good_flag = False
-            if good_flag and filt_by_dist:
-                if ot.gen_lys_dist_km < dist_thresh:
-                    good_flag = False
+                basic_flag = False
 
-            if good_flag:
-                self.data.loc[i, 'cat'] = self.cats['good']
-                if (((ot.vortex_type != 0).sum()
-                     / ot.shape[0] < type_thresh)
-                   and (ot.total_dist_km > dist_thresh)):
-                    pmc_flag = True
-                if pmc_flag:
-                    self.data.loc[i, 'cat'] = self.cats['pmc']
-                    if polarlow_flag:
-                        self.data.loc[i, 'cat'] = self.cats['polarlow']
+            if basic_flag:
+                self.data.loc[i, 'cat'] = self.cats['basic']
+                # 2. moderate filter
+                # 2.1. Filter by flag assigned by the tracking algorithm
+                if (ot.vortex_type != 0).sum() / ot.shape[0] > type_thresh:
+                    moderate_flag = False
+                # 2.2. Filter by distance between genesis and lysis
+                if filt_by_dist and (ot.gen_lys_dist_km < dist_thresh):
+                    moderate_flag = False
 
-    def match_tracks(self, others, subset='good', method='simple',
+                if moderate_flag:
+                    self.data.loc[i, 'cat'] = self.cats['moderate']
+                    # 3. Strong filter
+                    # 3.1. Filter by vorticity [Watanabe et al., 2016, p.2509]
+                    if ((not (ot.vo > vort_thresh0).any()) or
+                        (not (((ot.vo > vort_thresh1).sum() > 1) and
+                              (ot.lifetime_h > time_thresh1)))):
+                        strong_flag = False
+                    if strong_flag:
+                        self.data.loc[i, 'cat'] = self.cats['strong']
+            else:
+                self.data.loc[i, 'cat'] = self.cats['unknown']
+
+    def match_tracks(self, others, subset='basic', method='simple',
                      interpolate_to='other',
                      thresh_dist=250., time_frac_thresh=0.5, beta=100.):
         """
@@ -380,7 +406,7 @@ class TrackRun:
         others: list
             List of `pandas.DataFrame`s
         subset: str, optional
-            Subset to match (good|pmc|polarlow)
+            Subset to match (basic|moderate|strong)
         method: str, optional
             Method of matching (intersection|simple|bs2000)
         interpolate_to: str, optional
@@ -500,7 +526,7 @@ class TrackRun:
 
         return match_pairs
 
-    def point_density(self, lon2d, lat2d, subset='good', method='radius',
+    def point_density(self, lon2d, lat2d, subset='basic', method='radius',
                       r=100.):
         """
         Calculate point density for a given lon-lat grid
@@ -514,7 +540,7 @@ class TrackRun:
         lat2d: array of shape (M, N)
             Latitude grid
         subset: str, optional
-            Subset to match (good|pmc|polarlow)
+            Subset to match (basic|moderate|strong)
         method: str, optional
             Method to calculate density (radius|cell)
         r: float, optional
@@ -538,7 +564,7 @@ class TrackRun:
         #     return self._density
         return dens
 
-    def track_density(self, lon2d, lat2d, subset='good', method='radius',
+    def track_density(self, lon2d, lat2d, subset='basic', method='radius',
                       r=100.):
         """
         Calculate track density for a given lon-lat grid
@@ -554,7 +580,7 @@ class TrackRun:
         lat2d: array of shape (M, N)
             Latitude grid
         subset: str, optional
-            Subset to match (good|pmc|polarlow)
+            Subset to match (basic|moderate|strong)
         method: str, optional
             Method to calculate density (radius|cell)
         r: float, optional
@@ -575,8 +601,8 @@ class TrackRun:
             dens = track_density_cell(lon2d_c, lat2d_c, sub_data).base
         return dens
 
-    def genesis_density_rad(self, lon2d, lat2d, subset='good', method='radius',
-                            r=100., exclude=dict(m=10, d=1)):
+    def genesis_density_rad(self, lon2d, lat2d, subset='basic',
+                            method='radius', r=100., exclude=dict(m=10, d=1)):
         """
         Calculate track genesis density for a given lon-lat grid
 
@@ -587,7 +613,7 @@ class TrackRun:
         lat2d: array of shape (M, N)
             Latitude grid
         subset: str, optional
-            Subset to match (good|pmc|polarlow)
+            Subset to match (basic|moderate|strong)
         method: str, optional
             Method to calculate density (radius|cell)
         r: float, optional
@@ -616,7 +642,7 @@ class TrackRun:
             dens = point_density_cell(lon2d_c, lat2d_c, sub_data).base
         return dens
 
-    def lysis_density_rad(self, lon2d, lat2d, subset='good', method='radius',
+    def lysis_density_rad(self, lon2d, lat2d, subset='basic', method='radius',
                           r=100., exclude=dict(m=10, d=1)):
         """
         Calculate track lysis density for a given lon-lat grid
@@ -628,7 +654,7 @@ class TrackRun:
         lat2d: array of shape (M, N)
             Latitude grid
         subset: str, optional
-            Subset to match (good|pmc|polarlow)
+            Subset to match (basic|moderate|strong)
         method: str, optional
             Method to calculate density (radius|cell)
         r: float, optional
