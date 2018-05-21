@@ -12,13 +12,23 @@ from .utils import (great_circle, mask_tracks,
                     track_density_rad, track_density_cell,
                     point_density_rad, point_density_cell,
                     distance_metric, total_dist)
-from .exceptions import ArgumentError, LoadError
+from .exceptions import ArgumentError, LoadError, NotYetImplementedError
 
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
 
 CATS = dict(unknown=0, good=1, pmc=2, polarlow=3)
 COLUMNS = ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type', 'cat']
+
+
+def exclude_by_first_day(df, m, d):
+    return not ((df.time.dt.month[0] == m).any()
+                and (df.time.dt.day[0] == d).any())
+
+
+def exclude_by_last_day(df, m, d):
+    return not ((df.time.dt.month[-1] == m).any()
+                and (df.time.dt.day[-1] == d).any())
 
 
 class OctantSeries(pd.Series):
@@ -67,7 +77,8 @@ class OctantTrack(pd.DataFrame):
 
     @property
     def tridlonlat(self):
-        return self[['track_idx', 'lon', 'lat']].values
+        return (self.reset_index('track_idx')
+                [['track_idx', 'lon', 'lat']].values)
 
     @property
     def tridlonlat_c(self):
@@ -562,6 +573,90 @@ class TrackRun:
             dens = track_density_rad(lon2d_c, lat2d_c, sub_data, r_metres).base
         elif method == 'cell':
             dens = track_density_cell(lon2d_c, lat2d_c, sub_data).base
+        return dens
+
+    def genesis_density_rad(self, lon2d, lat2d, subset='good', method='radius',
+                            r=100., exclude=dict(m=10, d=1)):
+        """
+        Calculate track genesis density for a given lon-lat grid
+
+        Arguments
+        ---------
+        lon2d: array of shape (M, N)
+            Longitude grid
+        lat2d: array of shape (M, N)
+            Latitude grid
+        subset: str, optional
+            Subset to match (good|pmc|polarlow)
+        method: str, optional
+            Method to calculate density (radius|cell)
+        r: float, optional
+            Radius in km
+            Used when method='radius'
+        exclude: dict, optional
+            Month and day pair to filter out tracks that start at the first
+            time step. Default is set to 1 October: (m=10, d=1)
+        Returns
+        -------
+        dens: array of shape (M, N)
+            Numpy array of track genesis density
+        """
+        if method == 'cell':
+            raise NotYetImplementedError()
+        sub_data = (self[subset]
+                    .groupby('track_idx')
+                    .filter(exclude_by_first_day, **exclude)
+                    .xs(0, level='row_idx')).lonlat_c
+        lon2d_c = lon2d.astype('double', order='C')
+        lat2d_c = lat2d.astype('double', order='C')
+        if method == 'radius':
+            r_metres = r * 1e3
+            dens = point_density_rad(lon2d_c, lat2d_c, sub_data, r_metres).base
+        elif method == 'cell':
+            dens = point_density_cell(lon2d_c, lat2d_c, sub_data).base
+        return dens
+
+    def lysis_density_rad(self, lon2d, lat2d, subset='good', method='radius',
+                          r=100., exclude=dict(m=10, d=1)):
+        """
+        Calculate track lysis density for a given lon-lat grid
+
+        Arguments
+        ---------
+        lon2d: array of shape (M, N)
+            Longitude grid
+        lat2d: array of shape (M, N)
+            Latitude grid
+        subset: str, optional
+            Subset to match (good|pmc|polarlow)
+        method: str, optional
+            Method to calculate density (radius|cell)
+        r: float, optional
+            Radius in km
+            Used when method='radius'
+        exclude: dict, optional
+            Month and day pair to filter out tracks that end at the last
+            time step. Default is set to 30 April: (m=4, d=30)
+        Returns
+        -------
+        dens: array of shape (M, N)
+            Numpy array of track lysis density
+        """
+        if method == 'cell':
+            raise NotYetImplementedError()
+        sub_data = (self[subset]
+                    .groupby('track_idx')
+                    .tail(1)
+                    .groupby('track_idx')
+                    .filter(exclude_by_last_day, **exclude)
+                    ).lonlat_c
+        lon2d_c = lon2d.astype('double', order='C')
+        lat2d_c = lat2d.astype('double', order='C')
+        if method == 'radius':
+            r_metres = r * 1e3
+            dens = point_density_rad(lon2d_c, lat2d_c, sub_data, r_metres).base
+        elif method == 'cell':
+            dens = point_density_cell(lon2d_c, lat2d_c, sub_data).base
         return dens
 
 
