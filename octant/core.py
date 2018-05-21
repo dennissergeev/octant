@@ -166,6 +166,7 @@ class TrackRun:
         self.data = OctantTrack(index=mux, columns=COLUMNS)
         self.filelist = []
         self.sources = []
+        self.is_categorised = False
         # self._density = None
         if isinstance(self.dirname, Path):
             # Read all files and store in self.all
@@ -332,6 +333,9 @@ class TrackRun:
         vort_thresh1: float, optional
             Higher vorticity threshold for strong filtering
         """
+        # Save filtering params just in case
+        self._cat_params = {k: v for k, v in locals().items() if k != 'self'}
+        # 0. Prepare mask for spatial filtering
         filt_by_mask = False
         if isinstance(lsm, xr.DataArray):
             lon2d, lat2d = np.meshgrid(lsm.longitude, lsm.latitude)
@@ -394,6 +398,7 @@ class TrackRun:
                         self.data.loc[i, 'cat'] = self.cats['strong']
             else:
                 self.data.loc[i, 'cat'] = self.cats['unknown']
+        self.is_categorised = True
 
     def match_tracks(self, others, subset='basic', method='simple',
                      interpolate_to='other',
