@@ -397,8 +397,8 @@ class TrackRun:
                     self.data.loc[i, 'cat'] = self.cats['moderate']
                     # 3. Strong filter
                     # 3.1. Filter by vorticity [Watanabe et al., 2016, p.2509]
-                    if ((not (ot.vo > vort_thresh0).any()) or
-                        (not (((ot.vo > vort_thresh1).sum() > 1) and
+                    if ((not (ot.vo > vort_thresh1).any()) or
+                        (not (((ot.vo > vort_thresh0).sum() > 1) and
                               (ot.lifetime_h > time_thresh1)))):
                         strong_flag = False
                     if strong_flag:
