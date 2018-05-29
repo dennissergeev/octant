@@ -613,8 +613,8 @@ class TrackRun:
             dens = track_density_cell(lon2d_c, lat2d_c, sub_data).base
         return dens
 
-    def genesis_density_rad(self, lon2d, lat2d, subset='basic',
-                            method='radius', r=100., exclude=dict(m=10, d=1)):
+    def genesis_density(self, lon2d, lat2d, subset='basic',
+                        method='radius', r=100., exclude=dict(m=10, d=1)):
         """
         Calculate track genesis density for a given lon-lat grid
 
@@ -654,8 +654,8 @@ class TrackRun:
             dens = point_density_cell(lon2d_c, lat2d_c, sub_data).base
         return dens
 
-    def lysis_density_rad(self, lon2d, lat2d, subset='basic', method='radius',
-                          r=100., exclude=dict(m=10, d=1)):
+    def lysis_density(self, lon2d, lat2d, subset='basic', method='radius',
+                      r=100., exclude=dict(m=10, d=1)):
         """
         Calculate track lysis density for a given lon-lat grid
 
