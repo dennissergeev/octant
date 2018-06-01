@@ -536,7 +536,7 @@ class TrackRun:
         else:
             raise ArgumentError(f'Unknown method: {method}')
 
-        return match_pairs
+        return match_pairs, dist_matrix
 
     def point_density(self, lon2d, lat2d, subset='basic', method='radius',
                       r=100.):

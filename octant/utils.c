@@ -1204,7 +1204,7 @@ struct __pyx_opt_args_6octant_5utils__traj_variance {
   double beta;
 };
 
-/* "octant/utils.pyx":319
+/* "octant/utils.pyx":342
  * @cython.wraparound(False)  # Deactivate negative indexing
  * @cython.cdivision(True)  # Do not check for ZeroDivision errors
  * cpdef double distance_metric(double[:] x1,             # <<<<<<<<<<<<<<
@@ -5086,20 +5086,55 @@ static double __pyx_f_6octant_5utils__traj_variance(__Pyx_memviewslice __pyx_v_x
   int __pyx_v_i1;
   int __pyx_v_i2;
   double __pyx_v_variance_sum;
+  double __pyx_v_f0;
+  double __pyx_v_f1;
+  double __pyx_v_g0;
+  double __pyx_v_g1;
+  double __pyx_v_da1;
+  double __pyx_v_da2;
+  double __pyx_v_A1;
+  double __pyx_v_A2;
   double __pyx_r;
   __Pyx_RefNannyDeclarations
-  int __pyx_t_1;
-  int __pyx_t_2;
-  int __pyx_t_3;
-  int __pyx_t_4;
-  int __pyx_t_5;
-  int __pyx_t_6;
-  Py_ssize_t __pyx_t_7;
+  Py_ssize_t __pyx_t_1;
+  Py_ssize_t __pyx_t_2;
+  Py_ssize_t __pyx_t_3;
+  Py_ssize_t __pyx_t_4;
+  long __pyx_t_5;
+  long __pyx_t_6;
+  int __pyx_t_7;
   Py_ssize_t __pyx_t_8;
   Py_ssize_t __pyx_t_9;
-  Py_ssize_t __pyx_t_10;
-  Py_ssize_t __pyx_t_11;
-  Py_ssize_t __pyx_t_12;
+  long __pyx_t_10;
+  long __pyx_t_11;
+  int __pyx_t_12;
+  Py_ssize_t __pyx_t_13;
+  Py_ssize_t __pyx_t_14;
+  Py_ssize_t __pyx_t_15;
+  Py_ssize_t __pyx_t_16;
+  Py_ssize_t __pyx_t_17;
+  Py_ssize_t __pyx_t_18;
+  Py_ssize_t __pyx_t_19;
+  Py_ssize_t __pyx_t_20;
+  Py_ssize_t __pyx_t_21;
+  Py_ssize_t __pyx_t_22;
+  Py_ssize_t __pyx_t_23;
+  Py_ssize_t __pyx_t_24;
+  Py_ssize_t __pyx_t_25;
+  Py_ssize_t __pyx_t_26;
+  Py_ssize_t __pyx_t_27;
+  Py_ssize_t __pyx_t_28;
+  Py_ssize_t __pyx_t_29;
+  Py_ssize_t __pyx_t_30;
+  Py_ssize_t __pyx_t_31;
+  Py_ssize_t __pyx_t_32;
+  Py_ssize_t __pyx_t_33;
+  Py_ssize_t __pyx_t_34;
+  Py_ssize_t __pyx_t_35;
+  Py_ssize_t __pyx_t_36;
+  Py_ssize_t __pyx_t_37;
+  Py_ssize_t __pyx_t_38;
+  double __pyx_t_39;
   __Pyx_RefNannySetupContext("_traj_variance", 0);
   if (__pyx_optional_args) {
     if (__pyx_optional_args->__pyx_n > 0) {
@@ -5128,88 +5163,231 @@ static double __pyx_f_6octant_5utils__traj_variance(__Pyx_memviewslice __pyx_v_x
  */
   __pyx_v_imax2 = (__pyx_v_x2.shape[0]);
 
-  /* "octant/utils.pyx":307
- *     cdef double variance_sum
+  /* "octant/utils.pyx":315
+ *     cdef double A2
+ * 
+ *     A1 = t1[imax1-1] - t1[0]             # <<<<<<<<<<<<<<
+ *     A2 = t2[imax2-1] - t2[0]
+ * 
+ */
+  __pyx_t_1 = (__pyx_v_imax1 - 1);
+  __pyx_t_2 = 0;
+  __pyx_v_A1 = ((*((double *) ( /* dim=0 */ (__pyx_v_t1.data + __pyx_t_1 * __pyx_v_t1.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t1.data + __pyx_t_2 * __pyx_v_t1.strides[0]) ))));
+
+  /* "octant/utils.pyx":316
+ * 
+ *     A1 = t1[imax1-1] - t1[0]
+ *     A2 = t2[imax2-1] - t2[0]             # <<<<<<<<<<<<<<
+ * 
+ *     variance_sum = 0
+ */
+  __pyx_t_3 = (__pyx_v_imax2 - 1);
+  __pyx_t_4 = 0;
+  __pyx_v_A2 = ((*((double *) ( /* dim=0 */ (__pyx_v_t2.data + __pyx_t_3 * __pyx_v_t2.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t2.data + __pyx_t_4 * __pyx_v_t2.strides[0]) ))));
+
+  /* "octant/utils.pyx":318
+ *     A2 = t2[imax2-1] - t2[0]
  * 
  *     variance_sum = 0             # <<<<<<<<<<<<<<
- *     for i1 in range(imax1):
- *         for i2 in range(imax2):
+ *     for i1 in range(imax1-1):
+ *         da1 = t1[i1+1] - t1[i1]
  */
   __pyx_v_variance_sum = 0.0;
 
-  /* "octant/utils.pyx":308
+  /* "octant/utils.pyx":319
  * 
  *     variance_sum = 0
- *     for i1 in range(imax1):             # <<<<<<<<<<<<<<
- *         for i2 in range(imax2):
- *             variance_sum += ( alpha * (_great_circle(x1[i1], x2[i2],
+ *     for i1 in range(imax1-1):             # <<<<<<<<<<<<<<
+ *         da1 = t1[i1+1] - t1[i1]
+ *         for i2 in range(imax2-1):
  */
-  __pyx_t_1 = __pyx_v_imax1;
-  __pyx_t_2 = __pyx_t_1;
-  for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
-    __pyx_v_i1 = __pyx_t_3;
+  __pyx_t_5 = (__pyx_v_imax1 - 1);
+  __pyx_t_6 = __pyx_t_5;
+  for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_6; __pyx_t_7+=1) {
+    __pyx_v_i1 = __pyx_t_7;
 
-    /* "octant/utils.pyx":309
+    /* "octant/utils.pyx":320
  *     variance_sum = 0
- *     for i1 in range(imax1):
- *         for i2 in range(imax2):             # <<<<<<<<<<<<<<
- *             variance_sum += ( alpha * (_great_circle(x1[i1], x2[i2],
- *                                                      y1[i1], y2[i2]) ** 2)
+ *     for i1 in range(imax1-1):
+ *         da1 = t1[i1+1] - t1[i1]             # <<<<<<<<<<<<<<
+ *         for i2 in range(imax2-1):
+ *             da2 = t2[i2+1] - t2[i2]
  */
-    __pyx_t_4 = __pyx_v_imax2;
-    __pyx_t_5 = __pyx_t_4;
-    for (__pyx_t_6 = 0; __pyx_t_6 < __pyx_t_5; __pyx_t_6+=1) {
-      __pyx_v_i2 = __pyx_t_6;
+    __pyx_t_8 = (__pyx_v_i1 + 1);
+    __pyx_t_9 = __pyx_v_i1;
+    __pyx_v_da1 = ((*((double *) ( /* dim=0 */ (__pyx_v_t1.data + __pyx_t_8 * __pyx_v_t1.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t1.data + __pyx_t_9 * __pyx_v_t1.strides[0]) ))));
 
-      /* "octant/utils.pyx":310
- *     for i1 in range(imax1):
- *         for i2 in range(imax2):
- *             variance_sum += ( alpha * (_great_circle(x1[i1], x2[i2],             # <<<<<<<<<<<<<<
- *                                                      y1[i1], y2[i2]) ** 2)
- *                              + beta * ((t1[i1] - t2[i2])) ** 2 )
+    /* "octant/utils.pyx":321
+ *     for i1 in range(imax1-1):
+ *         da1 = t1[i1+1] - t1[i1]
+ *         for i2 in range(imax2-1):             # <<<<<<<<<<<<<<
+ *             da2 = t2[i2+1] - t2[i2]
+ *             f0 = ( alpha * (_great_circle(x1[i1], x2[i2],
  */
-      __pyx_t_7 = __pyx_v_i1;
-      __pyx_t_8 = __pyx_v_i2;
+    __pyx_t_10 = (__pyx_v_imax2 - 1);
+    __pyx_t_11 = __pyx_t_10;
+    for (__pyx_t_12 = 0; __pyx_t_12 < __pyx_t_11; __pyx_t_12+=1) {
+      __pyx_v_i2 = __pyx_t_12;
 
-      /* "octant/utils.pyx":311
- *         for i2 in range(imax2):
- *             variance_sum += ( alpha * (_great_circle(x1[i1], x2[i2],
- *                                                      y1[i1], y2[i2]) ** 2)             # <<<<<<<<<<<<<<
- *                              + beta * ((t1[i1] - t2[i2])) ** 2 )
- *     return variance_sum
+      /* "octant/utils.pyx":322
+ *         da1 = t1[i1+1] - t1[i1]
+ *         for i2 in range(imax2-1):
+ *             da2 = t2[i2+1] - t2[i2]             # <<<<<<<<<<<<<<
+ *             f0 = ( alpha * (_great_circle(x1[i1], x2[i2],
+ *                                           y1[i1], y2[i2]) ** 2)
  */
-      __pyx_t_9 = __pyx_v_i1;
-      __pyx_t_10 = __pyx_v_i2;
+      __pyx_t_13 = (__pyx_v_i2 + 1);
+      __pyx_t_14 = __pyx_v_i2;
+      __pyx_v_da2 = ((*((double *) ( /* dim=0 */ (__pyx_v_t2.data + __pyx_t_13 * __pyx_v_t2.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t2.data + __pyx_t_14 * __pyx_v_t2.strides[0]) ))));
 
-      /* "octant/utils.pyx":312
- *             variance_sum += ( alpha * (_great_circle(x1[i1], x2[i2],
- *                                                      y1[i1], y2[i2]) ** 2)
- *                              + beta * ((t1[i1] - t2[i2])) ** 2 )             # <<<<<<<<<<<<<<
- *     return variance_sum
+      /* "octant/utils.pyx":323
+ *         for i2 in range(imax2-1):
+ *             da2 = t2[i2+1] - t2[i2]
+ *             f0 = ( alpha * (_great_circle(x1[i1], x2[i2],             # <<<<<<<<<<<<<<
+ *                                           y1[i1], y2[i2]) ** 2)
+ *                   + beta * ((t1[i1] - t2[i2])) ** 2 )
+ */
+      __pyx_t_15 = __pyx_v_i1;
+      __pyx_t_16 = __pyx_v_i2;
+
+      /* "octant/utils.pyx":324
+ *             da2 = t2[i2+1] - t2[i2]
+ *             f0 = ( alpha * (_great_circle(x1[i1], x2[i2],
+ *                                           y1[i1], y2[i2]) ** 2)             # <<<<<<<<<<<<<<
+ *                   + beta * ((t1[i1] - t2[i2])) ** 2 )
+ *             f1 = ( alpha * (_great_circle(x1[i1+1], x2[i2],
+ */
+      __pyx_t_17 = __pyx_v_i1;
+      __pyx_t_18 = __pyx_v_i2;
+
+      /* "octant/utils.pyx":325
+ *             f0 = ( alpha * (_great_circle(x1[i1], x2[i2],
+ *                                           y1[i1], y2[i2]) ** 2)
+ *                   + beta * ((t1[i1] - t2[i2])) ** 2 )             # <<<<<<<<<<<<<<
+ *             f1 = ( alpha * (_great_circle(x1[i1+1], x2[i2],
+ *                                           y1[i1+1], y2[i2]) ** 2)
+ */
+      __pyx_t_19 = __pyx_v_i1;
+      __pyx_t_20 = __pyx_v_i2;
+      __pyx_v_f0 = ((__pyx_v_alpha * pow(__pyx_f_6octant_5utils__great_circle((*((double *) ( /* dim=0 */ (__pyx_v_x1.data + __pyx_t_15 * __pyx_v_x1.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_x2.data + __pyx_t_16 * __pyx_v_x2.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_y1.data + __pyx_t_17 * __pyx_v_y1.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_y2.data + __pyx_t_18 * __pyx_v_y2.strides[0]) ))), NULL), 2.0)) + (__pyx_v_beta * pow(((*((double *) ( /* dim=0 */ (__pyx_v_t1.data + __pyx_t_19 * __pyx_v_t1.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t2.data + __pyx_t_20 * __pyx_v_t2.strides[0]) )))), 2.0)));
+
+      /* "octant/utils.pyx":326
+ *                                           y1[i1], y2[i2]) ** 2)
+ *                   + beta * ((t1[i1] - t2[i2])) ** 2 )
+ *             f1 = ( alpha * (_great_circle(x1[i1+1], x2[i2],             # <<<<<<<<<<<<<<
+ *                                           y1[i1+1], y2[i2]) ** 2)
+ *                   + beta * ((t1[i1+1] - t2[i2])) ** 2 )
+ */
+      __pyx_t_21 = (__pyx_v_i1 + 1);
+      __pyx_t_22 = __pyx_v_i2;
+
+      /* "octant/utils.pyx":327
+ *                   + beta * ((t1[i1] - t2[i2])) ** 2 )
+ *             f1 = ( alpha * (_great_circle(x1[i1+1], x2[i2],
+ *                                           y1[i1+1], y2[i2]) ** 2)             # <<<<<<<<<<<<<<
+ *                   + beta * ((t1[i1+1] - t2[i2])) ** 2 )
+ *             g0 = ( alpha * (_great_circle(x1[i1], x2[i2+1],
+ */
+      __pyx_t_23 = (__pyx_v_i1 + 1);
+      __pyx_t_24 = __pyx_v_i2;
+
+      /* "octant/utils.pyx":328
+ *             f1 = ( alpha * (_great_circle(x1[i1+1], x2[i2],
+ *                                           y1[i1+1], y2[i2]) ** 2)
+ *                   + beta * ((t1[i1+1] - t2[i2])) ** 2 )             # <<<<<<<<<<<<<<
+ *             g0 = ( alpha * (_great_circle(x1[i1], x2[i2+1],
+ *                                           y1[i1], y2[i2+1]) ** 2)
+ */
+      __pyx_t_25 = (__pyx_v_i1 + 1);
+      __pyx_t_26 = __pyx_v_i2;
+      __pyx_v_f1 = ((__pyx_v_alpha * pow(__pyx_f_6octant_5utils__great_circle((*((double *) ( /* dim=0 */ (__pyx_v_x1.data + __pyx_t_21 * __pyx_v_x1.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_x2.data + __pyx_t_22 * __pyx_v_x2.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_y1.data + __pyx_t_23 * __pyx_v_y1.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_y2.data + __pyx_t_24 * __pyx_v_y2.strides[0]) ))), NULL), 2.0)) + (__pyx_v_beta * pow(((*((double *) ( /* dim=0 */ (__pyx_v_t1.data + __pyx_t_25 * __pyx_v_t1.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t2.data + __pyx_t_26 * __pyx_v_t2.strides[0]) )))), 2.0)));
+
+      /* "octant/utils.pyx":329
+ *                                           y1[i1+1], y2[i2]) ** 2)
+ *                   + beta * ((t1[i1+1] - t2[i2])) ** 2 )
+ *             g0 = ( alpha * (_great_circle(x1[i1], x2[i2+1],             # <<<<<<<<<<<<<<
+ *                                           y1[i1], y2[i2+1]) ** 2)
+ *                   + beta * ((t1[i1] - t2[i2+1])) ** 2 )
+ */
+      __pyx_t_27 = __pyx_v_i1;
+      __pyx_t_28 = (__pyx_v_i2 + 1);
+
+      /* "octant/utils.pyx":330
+ *                   + beta * ((t1[i1+1] - t2[i2])) ** 2 )
+ *             g0 = ( alpha * (_great_circle(x1[i1], x2[i2+1],
+ *                                           y1[i1], y2[i2+1]) ** 2)             # <<<<<<<<<<<<<<
+ *                   + beta * ((t1[i1] - t2[i2+1])) ** 2 )
+ *             g1 = ( alpha * (_great_circle(x1[i1+1], x2[i2+1],
+ */
+      __pyx_t_29 = __pyx_v_i1;
+      __pyx_t_30 = (__pyx_v_i2 + 1);
+
+      /* "octant/utils.pyx":331
+ *             g0 = ( alpha * (_great_circle(x1[i1], x2[i2+1],
+ *                                           y1[i1], y2[i2+1]) ** 2)
+ *                   + beta * ((t1[i1] - t2[i2+1])) ** 2 )             # <<<<<<<<<<<<<<
+ *             g1 = ( alpha * (_great_circle(x1[i1+1], x2[i2+1],
+ *                                           y1[i1+1], y2[i2+1]) ** 2)
+ */
+      __pyx_t_31 = __pyx_v_i1;
+      __pyx_t_32 = (__pyx_v_i2 + 1);
+      __pyx_v_g0 = ((__pyx_v_alpha * pow(__pyx_f_6octant_5utils__great_circle((*((double *) ( /* dim=0 */ (__pyx_v_x1.data + __pyx_t_27 * __pyx_v_x1.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_x2.data + __pyx_t_28 * __pyx_v_x2.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_y1.data + __pyx_t_29 * __pyx_v_y1.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_y2.data + __pyx_t_30 * __pyx_v_y2.strides[0]) ))), NULL), 2.0)) + (__pyx_v_beta * pow(((*((double *) ( /* dim=0 */ (__pyx_v_t1.data + __pyx_t_31 * __pyx_v_t1.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t2.data + __pyx_t_32 * __pyx_v_t2.strides[0]) )))), 2.0)));
+
+      /* "octant/utils.pyx":332
+ *                                           y1[i1], y2[i2+1]) ** 2)
+ *                   + beta * ((t1[i1] - t2[i2+1])) ** 2 )
+ *             g1 = ( alpha * (_great_circle(x1[i1+1], x2[i2+1],             # <<<<<<<<<<<<<<
+ *                                           y1[i1+1], y2[i2+1]) ** 2)
+ *                   + beta * ((t1[i1+1] - t2[i2+1])) ** 2 )
+ */
+      __pyx_t_33 = (__pyx_v_i1 + 1);
+      __pyx_t_34 = (__pyx_v_i2 + 1);
+
+      /* "octant/utils.pyx":333
+ *                   + beta * ((t1[i1] - t2[i2+1])) ** 2 )
+ *             g1 = ( alpha * (_great_circle(x1[i1+1], x2[i2+1],
+ *                                           y1[i1+1], y2[i2+1]) ** 2)             # <<<<<<<<<<<<<<
+ *                   + beta * ((t1[i1+1] - t2[i2+1])) ** 2 )
+ *             variance_sum += 0.25 * (f0 + f1 + g0 + g1) * da1 * da2
+ */
+      __pyx_t_35 = (__pyx_v_i1 + 1);
+      __pyx_t_36 = (__pyx_v_i2 + 1);
+
+      /* "octant/utils.pyx":334
+ *             g1 = ( alpha * (_great_circle(x1[i1+1], x2[i2+1],
+ *                                           y1[i1+1], y2[i2+1]) ** 2)
+ *                   + beta * ((t1[i1+1] - t2[i2+1])) ** 2 )             # <<<<<<<<<<<<<<
+ *             variance_sum += 0.25 * (f0 + f1 + g0 + g1) * da1 * da2
+ *     return variance_sum / (A1 * A2)
+ */
+      __pyx_t_37 = (__pyx_v_i1 + 1);
+      __pyx_t_38 = (__pyx_v_i2 + 1);
+      __pyx_v_g1 = ((__pyx_v_alpha * pow(__pyx_f_6octant_5utils__great_circle((*((double *) ( /* dim=0 */ (__pyx_v_x1.data + __pyx_t_33 * __pyx_v_x1.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_x2.data + __pyx_t_34 * __pyx_v_x2.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_y1.data + __pyx_t_35 * __pyx_v_y1.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_y2.data + __pyx_t_36 * __pyx_v_y2.strides[0]) ))), NULL), 2.0)) + (__pyx_v_beta * pow(((*((double *) ( /* dim=0 */ (__pyx_v_t1.data + __pyx_t_37 * __pyx_v_t1.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t2.data + __pyx_t_38 * __pyx_v_t2.strides[0]) )))), 2.0)));
+
+      /* "octant/utils.pyx":335
+ *                                           y1[i1+1], y2[i2+1]) ** 2)
+ *                   + beta * ((t1[i1+1] - t2[i2+1])) ** 2 )
+ *             variance_sum += 0.25 * (f0 + f1 + g0 + g1) * da1 * da2             # <<<<<<<<<<<<<<
+ *     return variance_sum / (A1 * A2)
  * 
  */
-      __pyx_t_11 = __pyx_v_i1;
-      __pyx_t_12 = __pyx_v_i2;
-
-      /* "octant/utils.pyx":310
- *     for i1 in range(imax1):
- *         for i2 in range(imax2):
- *             variance_sum += ( alpha * (_great_circle(x1[i1], x2[i2],             # <<<<<<<<<<<<<<
- *                                                      y1[i1], y2[i2]) ** 2)
- *                              + beta * ((t1[i1] - t2[i2])) ** 2 )
- */
-      __pyx_v_variance_sum = (__pyx_v_variance_sum + ((__pyx_v_alpha * pow(__pyx_f_6octant_5utils__great_circle((*((double *) ( /* dim=0 */ (__pyx_v_x1.data + __pyx_t_7 * __pyx_v_x1.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_x2.data + __pyx_t_8 * __pyx_v_x2.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_y1.data + __pyx_t_9 * __pyx_v_y1.strides[0]) ))), (*((double *) ( /* dim=0 */ (__pyx_v_y2.data + __pyx_t_10 * __pyx_v_y2.strides[0]) ))), NULL), 2.0)) + (__pyx_v_beta * pow(((*((double *) ( /* dim=0 */ (__pyx_v_t1.data + __pyx_t_11 * __pyx_v_t1.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t2.data + __pyx_t_12 * __pyx_v_t2.strides[0]) )))), 2.0))));
+      __pyx_v_variance_sum = (__pyx_v_variance_sum + (((0.25 * (((__pyx_v_f0 + __pyx_v_f1) + __pyx_v_g0) + __pyx_v_g1)) * __pyx_v_da1) * __pyx_v_da2));
     }
   }
 
-  /* "octant/utils.pyx":313
- *                                                      y1[i1], y2[i2]) ** 2)
- *                              + beta * ((t1[i1] - t2[i2])) ** 2 )
- *     return variance_sum             # <<<<<<<<<<<<<<
+  /* "octant/utils.pyx":336
+ *                   + beta * ((t1[i1+1] - t2[i2+1])) ** 2 )
+ *             variance_sum += 0.25 * (f0 + f1 + g0 + g1) * da1 * da2
+ *     return variance_sum / (A1 * A2)             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_r = __pyx_v_variance_sum;
+  __pyx_t_39 = (__pyx_v_A1 * __pyx_v_A2);
+  if (unlikely(__pyx_t_39 == 0)) {
+    PyErr_SetString(PyExc_ZeroDivisionError, "float division");
+    __PYX_ERR(0, 336, __pyx_L1_error)
+  }
+  __pyx_r = (__pyx_v_variance_sum / __pyx_t_39);
   goto __pyx_L0;
 
   /* "octant/utils.pyx":267
@@ -5221,12 +5399,15 @@ static double __pyx_f_6octant_5utils__traj_variance(__Pyx_memviewslice __pyx_v_x
  */
 
   /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_WriteUnraisable("octant.utils._traj_variance", __pyx_clineno, __pyx_lineno, __pyx_filename, 1, 0);
+  __pyx_r = 0;
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-/* "octant/utils.pyx":319
+/* "octant/utils.pyx":342
  * @cython.wraparound(False)  # Deactivate negative indexing
  * @cython.cdivision(True)  # Do not check for ZeroDivision errors
  * cpdef double distance_metric(double[:] x1,             # <<<<<<<<<<<<<<
@@ -5284,7 +5465,7 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
     }
   }
 
-  /* "octant/utils.pyx":366
+  /* "octant/utils.pyx":389
  *     cdef double A1
  *     cdef double A2
  *     cdef int imax1 = x1.shape[0]             # <<<<<<<<<<<<<<
@@ -5293,7 +5474,7 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
  */
   __pyx_v_imax1 = (__pyx_v_x1.shape[0]);
 
-  /* "octant/utils.pyx":367
+  /* "octant/utils.pyx":390
  *     cdef double A2
  *     cdef int imax1 = x1.shape[0]
  *     cdef int imax2 = x2.shape[0]             # <<<<<<<<<<<<<<
@@ -5302,7 +5483,7 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
  */
   __pyx_v_imax2 = (__pyx_v_x2.shape[0]);
 
-  /* "octant/utils.pyx":368
+  /* "octant/utils.pyx":391
  *     cdef int imax1 = x1.shape[0]
  *     cdef int imax2 = x2.shape[0]
  *     cdef double nano_s = 1e-9             # <<<<<<<<<<<<<<
@@ -5311,40 +5492,40 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
  */
   __pyx_v_nano_s = 1e-9;
 
-  /* "octant/utils.pyx":369
+  /* "octant/utils.pyx":392
  *     cdef int imax2 = x2.shape[0]
  *     cdef double nano_s = 1e-9
  *     h_np1 = np.zeros([imax1], dtype=np.double)             # <<<<<<<<<<<<<<
  *     h_np2 = np.zeros([imax2], dtype=np.double)
  *     cdef double[:] t1_s = h_np1
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 369, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 369, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_imax1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 369, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_imax1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyList_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 369, __pyx_L1_error)
+  __pyx_t_3 = PyList_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_1);
   PyList_SET_ITEM(__pyx_t_3, 0, __pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 369, __pyx_L1_error)
+  __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_3);
   PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_t_3);
   __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 369, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 369, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_double); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 369, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_double); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_dtype, __pyx_t_5) < 0) __PYX_ERR(0, 369, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_3, __pyx_n_s_dtype, __pyx_t_5) < 0) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 369, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 392, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -5352,40 +5533,40 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
   __pyx_v_h_np1 = __pyx_t_5;
   __pyx_t_5 = 0;
 
-  /* "octant/utils.pyx":370
+  /* "octant/utils.pyx":393
  *     cdef double nano_s = 1e-9
  *     h_np1 = np.zeros([imax1], dtype=np.double)
  *     h_np2 = np.zeros([imax2], dtype=np.double)             # <<<<<<<<<<<<<<
  *     cdef double[:] t1_s = h_np1
  *     cdef double[:] t2_s = h_np2
  */
-  __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 370, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_zeros); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 370, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_zeros); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyInt_From_int(__pyx_v_imax2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 370, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyInt_From_int(__pyx_v_imax2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_1 = PyList_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 370, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_5);
   PyList_SET_ITEM(__pyx_t_1, 0, __pyx_t_5);
   __pyx_t_5 = 0;
-  __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 370, __pyx_L1_error)
+  __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 370, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 370, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_double); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 370, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_double); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_4) < 0) __PYX_ERR(0, 370, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_4) < 0) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 370, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 393, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -5393,31 +5574,31 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
   __pyx_v_h_np2 = __pyx_t_4;
   __pyx_t_4 = 0;
 
-  /* "octant/utils.pyx":371
+  /* "octant/utils.pyx":394
  *     h_np1 = np.zeros([imax1], dtype=np.double)
  *     h_np2 = np.zeros([imax2], dtype=np.double)
  *     cdef double[:] t1_s = h_np1             # <<<<<<<<<<<<<<
  *     cdef double[:] t2_s = h_np2
  * 
  */
-  __pyx_t_6 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(__pyx_v_h_np1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_6.memview)) __PYX_ERR(0, 371, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(__pyx_v_h_np1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_6.memview)) __PYX_ERR(0, 394, __pyx_L1_error)
   __pyx_v_t1_s = __pyx_t_6;
   __pyx_t_6.memview = NULL;
   __pyx_t_6.data = NULL;
 
-  /* "octant/utils.pyx":372
+  /* "octant/utils.pyx":395
  *     h_np2 = np.zeros([imax2], dtype=np.double)
  *     cdef double[:] t1_s = h_np1
  *     cdef double[:] t2_s = h_np2             # <<<<<<<<<<<<<<
  * 
  *     for i1 in range(imax1):
  */
-  __pyx_t_6 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(__pyx_v_h_np2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_6.memview)) __PYX_ERR(0, 372, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(__pyx_v_h_np2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_6.memview)) __PYX_ERR(0, 395, __pyx_L1_error)
   __pyx_v_t2_s = __pyx_t_6;
   __pyx_t_6.memview = NULL;
   __pyx_t_6.data = NULL;
 
-  /* "octant/utils.pyx":374
+  /* "octant/utils.pyx":397
  *     cdef double[:] t2_s = h_np2
  * 
  *     for i1 in range(imax1):             # <<<<<<<<<<<<<<
@@ -5429,7 +5610,7 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
   for (__pyx_t_9 = 0; __pyx_t_9 < __pyx_t_8; __pyx_t_9+=1) {
     __pyx_v_i1 = __pyx_t_9;
 
-    /* "octant/utils.pyx":375
+    /* "octant/utils.pyx":398
  * 
  *     for i1 in range(imax1):
  *         t1_s[i1] = <double>t1[i1] * nano_s             # <<<<<<<<<<<<<<
@@ -5441,7 +5622,7 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
     *((double *) ( /* dim=0 */ (__pyx_v_t1_s.data + __pyx_t_11 * __pyx_v_t1_s.strides[0]) )) = (((double)(*((long *) ( /* dim=0 */ (__pyx_v_t1.data + __pyx_t_10 * __pyx_v_t1.strides[0]) )))) * __pyx_v_nano_s);
   }
 
-  /* "octant/utils.pyx":376
+  /* "octant/utils.pyx":399
  *     for i1 in range(imax1):
  *         t1_s[i1] = <double>t1[i1] * nano_s
  *     for i2 in range(imax2):             # <<<<<<<<<<<<<<
@@ -5453,7 +5634,7 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
   for (__pyx_t_9 = 0; __pyx_t_9 < __pyx_t_8; __pyx_t_9+=1) {
     __pyx_v_i2 = __pyx_t_9;
 
-    /* "octant/utils.pyx":377
+    /* "octant/utils.pyx":400
  *         t1_s[i1] = <double>t1[i1] * nano_s
  *     for i2 in range(imax2):
  *         t2_s[i2] = <double>t2[i2] * nano_s             # <<<<<<<<<<<<<<
@@ -5465,7 +5646,7 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
     *((double *) ( /* dim=0 */ (__pyx_v_t2_s.data + __pyx_t_13 * __pyx_v_t2_s.strides[0]) )) = (((double)(*((long *) ( /* dim=0 */ (__pyx_v_t2.data + __pyx_t_12 * __pyx_v_t2.strides[0]) )))) * __pyx_v_nano_s);
   }
 
-  /* "octant/utils.pyx":379
+  /* "octant/utils.pyx":402
  *         t2_s[i2] = <double>t2[i2] * nano_s
  * 
  *     A1 = t1_s[imax1-1] - t1_s[0]             # <<<<<<<<<<<<<<
@@ -5476,23 +5657,23 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
   __pyx_t_15 = 0;
   __pyx_v_A1 = ((*((double *) ( /* dim=0 */ (__pyx_v_t1_s.data + __pyx_t_14 * __pyx_v_t1_s.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t1_s.data + __pyx_t_15 * __pyx_v_t1_s.strides[0]) ))));
 
-  /* "octant/utils.pyx":380
+  /* "octant/utils.pyx":403
  * 
  *     A1 = t1_s[imax1-1] - t1_s[0]
  *     A2 = t2_s[imax2-1] - t2_s[0]             # <<<<<<<<<<<<<<
  * 
- *     sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta) # / (A1 * A2)
+ *     sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta)
  */
   __pyx_t_16 = (__pyx_v_imax2 - 1);
   __pyx_t_17 = 0;
   __pyx_v_A2 = ((*((double *) ( /* dim=0 */ (__pyx_v_t2_s.data + __pyx_t_16 * __pyx_v_t2_s.strides[0]) ))) - (*((double *) ( /* dim=0 */ (__pyx_v_t2_s.data + __pyx_t_17 * __pyx_v_t2_s.strides[0]) ))));
 
-  /* "octant/utils.pyx":382
+  /* "octant/utils.pyx":405
  *     A2 = t2_s[imax2-1] - t2_s[0]
  * 
- *     sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta) # / (A1 * A2)             # <<<<<<<<<<<<<<
- *     sigma11 = _traj_variance(x1, y1, t1_s, x1, y1, t1_s, alpha=alpha, beta=beta) # / (A1 * A1)
- *     sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta) # / (A2 * A2)
+ *     sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta)             # <<<<<<<<<<<<<<
+ *     sigma11 = _traj_variance(x1, y1, t1_s, x1, y1, t1_s, alpha=alpha, beta=beta)
+ *     sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta)
  */
   __pyx_t_19.__pyx_n = 2;
   __pyx_t_19.alpha = __pyx_v_alpha;
@@ -5500,11 +5681,11 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
   __pyx_t_18 = __pyx_f_6octant_5utils__traj_variance(__pyx_v_x1, __pyx_v_y1, __pyx_v_t1_s, __pyx_v_x2, __pyx_v_y2, __pyx_v_t2_s, &__pyx_t_19); 
   __pyx_v_sigma12 = __pyx_t_18;
 
-  /* "octant/utils.pyx":383
+  /* "octant/utils.pyx":406
  * 
- *     sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta) # / (A1 * A2)
- *     sigma11 = _traj_variance(x1, y1, t1_s, x1, y1, t1_s, alpha=alpha, beta=beta) # / (A1 * A1)             # <<<<<<<<<<<<<<
- *     sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta) # / (A2 * A2)
+ *     sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta)
+ *     sigma11 = _traj_variance(x1, y1, t1_s, x1, y1, t1_s, alpha=alpha, beta=beta)             # <<<<<<<<<<<<<<
+ *     sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta)
  * 
  */
   __pyx_t_19.__pyx_n = 2;
@@ -5513,10 +5694,10 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
   __pyx_t_18 = __pyx_f_6octant_5utils__traj_variance(__pyx_v_x1, __pyx_v_y1, __pyx_v_t1_s, __pyx_v_x1, __pyx_v_y1, __pyx_v_t1_s, &__pyx_t_19); 
   __pyx_v_sigma11 = __pyx_t_18;
 
-  /* "octant/utils.pyx":384
- *     sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta) # / (A1 * A2)
- *     sigma11 = _traj_variance(x1, y1, t1_s, x1, y1, t1_s, alpha=alpha, beta=beta) # / (A1 * A1)
- *     sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta) # / (A2 * A2)             # <<<<<<<<<<<<<<
+  /* "octant/utils.pyx":407
+ *     sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta)
+ *     sigma11 = _traj_variance(x1, y1, t1_s, x1, y1, t1_s, alpha=alpha, beta=beta)
+ *     sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta)             # <<<<<<<<<<<<<<
  * 
  *     dm = ((sigma12 - 0.5 * (sigma11 + sigma22)) / (A1 * A2)) ** 0.5
  */
@@ -5526,8 +5707,8 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
   __pyx_t_18 = __pyx_f_6octant_5utils__traj_variance(__pyx_v_x2, __pyx_v_y2, __pyx_v_t2_s, __pyx_v_x2, __pyx_v_y2, __pyx_v_t2_s, &__pyx_t_19); 
   __pyx_v_sigma22 = __pyx_t_18;
 
-  /* "octant/utils.pyx":386
- *     sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta) # / (A2 * A2)
+  /* "octant/utils.pyx":409
+ *     sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta)
  * 
  *     dm = ((sigma12 - 0.5 * (sigma11 + sigma22)) / (A1 * A2)) ** 0.5             # <<<<<<<<<<<<<<
  * 
@@ -5535,7 +5716,7 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
  */
   __pyx_v_dm = pow(((__pyx_v_sigma12 - (0.5 * (__pyx_v_sigma11 + __pyx_v_sigma22))) / (__pyx_v_A1 * __pyx_v_A2)), 0.5);
 
-  /* "octant/utils.pyx":388
+  /* "octant/utils.pyx":411
  *     dm = ((sigma12 - 0.5 * (sigma11 + sigma22)) / (A1 * A2)) ** 0.5
  * 
  *     return dm             # <<<<<<<<<<<<<<
@@ -5543,7 +5724,7 @@ static double __pyx_f_6octant_5utils_distance_metric(__Pyx_memviewslice __pyx_v_
   __pyx_r = __pyx_v_dm;
   goto __pyx_L0;
 
-  /* "octant/utils.pyx":319
+  /* "octant/utils.pyx":342
  * @cython.wraparound(False)  # Deactivate negative indexing
  * @cython.cdivision(True)  # Do not check for ZeroDivision errors
  * cpdef double distance_metric(double[:] x1,             # <<<<<<<<<<<<<<
@@ -5620,31 +5801,31 @@ static PyObject *__pyx_pw_6octant_5utils_15distance_metric(PyObject *__pyx_self,
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_y1)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, 1); __PYX_ERR(0, 319, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, 1); __PYX_ERR(0, 342, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
         if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_t1)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, 2); __PYX_ERR(0, 319, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, 2); __PYX_ERR(0, 342, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  3:
         if (likely((values[3] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_x2)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, 3); __PYX_ERR(0, 319, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, 3); __PYX_ERR(0, 342, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  4:
         if (likely((values[4] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_y2)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, 4); __PYX_ERR(0, 319, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, 4); __PYX_ERR(0, 342, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  5:
         if (likely((values[5] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_t2)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, 5); __PYX_ERR(0, 319, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, 5); __PYX_ERR(0, 342, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  6:
@@ -5660,7 +5841,7 @@ static PyObject *__pyx_pw_6octant_5utils_15distance_metric(PyObject *__pyx_self,
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "distance_metric") < 0)) __PYX_ERR(0, 319, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "distance_metric") < 0)) __PYX_ERR(0, 342, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -5678,26 +5859,26 @@ static PyObject *__pyx_pw_6octant_5utils_15distance_metric(PyObject *__pyx_self,
         default: goto __pyx_L5_argtuple_error;
       }
     }
-    __pyx_v_x1 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(values[0], PyBUF_WRITABLE); if (unlikely(!__pyx_v_x1.memview)) __PYX_ERR(0, 319, __pyx_L3_error)
-    __pyx_v_y1 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(values[1], PyBUF_WRITABLE); if (unlikely(!__pyx_v_y1.memview)) __PYX_ERR(0, 320, __pyx_L3_error)
-    __pyx_v_t1 = __Pyx_PyObject_to_MemoryviewSlice_ds_long(values[2], PyBUF_WRITABLE); if (unlikely(!__pyx_v_t1.memview)) __PYX_ERR(0, 321, __pyx_L3_error)
-    __pyx_v_x2 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(values[3], PyBUF_WRITABLE); if (unlikely(!__pyx_v_x2.memview)) __PYX_ERR(0, 322, __pyx_L3_error)
-    __pyx_v_y2 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(values[4], PyBUF_WRITABLE); if (unlikely(!__pyx_v_y2.memview)) __PYX_ERR(0, 323, __pyx_L3_error)
-    __pyx_v_t2 = __Pyx_PyObject_to_MemoryviewSlice_ds_long(values[5], PyBUF_WRITABLE); if (unlikely(!__pyx_v_t2.memview)) __PYX_ERR(0, 324, __pyx_L3_error)
+    __pyx_v_x1 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(values[0], PyBUF_WRITABLE); if (unlikely(!__pyx_v_x1.memview)) __PYX_ERR(0, 342, __pyx_L3_error)
+    __pyx_v_y1 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(values[1], PyBUF_WRITABLE); if (unlikely(!__pyx_v_y1.memview)) __PYX_ERR(0, 343, __pyx_L3_error)
+    __pyx_v_t1 = __Pyx_PyObject_to_MemoryviewSlice_ds_long(values[2], PyBUF_WRITABLE); if (unlikely(!__pyx_v_t1.memview)) __PYX_ERR(0, 344, __pyx_L3_error)
+    __pyx_v_x2 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(values[3], PyBUF_WRITABLE); if (unlikely(!__pyx_v_x2.memview)) __PYX_ERR(0, 345, __pyx_L3_error)
+    __pyx_v_y2 = __Pyx_PyObject_to_MemoryviewSlice_ds_double(values[4], PyBUF_WRITABLE); if (unlikely(!__pyx_v_y2.memview)) __PYX_ERR(0, 346, __pyx_L3_error)
+    __pyx_v_t2 = __Pyx_PyObject_to_MemoryviewSlice_ds_long(values[5], PyBUF_WRITABLE); if (unlikely(!__pyx_v_t2.memview)) __PYX_ERR(0, 347, __pyx_L3_error)
     if (values[6]) {
-      __pyx_v_alpha = __pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_alpha == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 325, __pyx_L3_error)
+      __pyx_v_alpha = __pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_alpha == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 348, __pyx_L3_error)
     } else {
       __pyx_v_alpha = ((double)1.);
     }
     if (values[7]) {
-      __pyx_v_beta = __pyx_PyFloat_AsDouble(values[7]); if (unlikely((__pyx_v_beta == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 326, __pyx_L3_error)
+      __pyx_v_beta = __pyx_PyFloat_AsDouble(values[7]); if (unlikely((__pyx_v_beta == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 349, __pyx_L3_error)
     } else {
       __pyx_v_beta = ((double)100.);
     }
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 319, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("distance_metric", 0, 6, 8, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 342, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("octant.utils.distance_metric", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -5718,17 +5899,17 @@ static PyObject *__pyx_pf_6octant_5utils_14distance_metric(CYTHON_UNUSED PyObjec
   PyObject *__pyx_t_3 = NULL;
   __Pyx_RefNannySetupContext("distance_metric", 0);
   __Pyx_XDECREF(__pyx_r);
-  if (unlikely(!__pyx_v_x1.memview)) { __Pyx_RaiseUnboundLocalError("x1"); __PYX_ERR(0, 319, __pyx_L1_error) }
-  if (unlikely(!__pyx_v_y1.memview)) { __Pyx_RaiseUnboundLocalError("y1"); __PYX_ERR(0, 319, __pyx_L1_error) }
-  if (unlikely(!__pyx_v_t1.memview)) { __Pyx_RaiseUnboundLocalError("t1"); __PYX_ERR(0, 319, __pyx_L1_error) }
-  if (unlikely(!__pyx_v_x2.memview)) { __Pyx_RaiseUnboundLocalError("x2"); __PYX_ERR(0, 319, __pyx_L1_error) }
-  if (unlikely(!__pyx_v_y2.memview)) { __Pyx_RaiseUnboundLocalError("y2"); __PYX_ERR(0, 319, __pyx_L1_error) }
-  if (unlikely(!__pyx_v_t2.memview)) { __Pyx_RaiseUnboundLocalError("t2"); __PYX_ERR(0, 319, __pyx_L1_error) }
+  if (unlikely(!__pyx_v_x1.memview)) { __Pyx_RaiseUnboundLocalError("x1"); __PYX_ERR(0, 342, __pyx_L1_error) }
+  if (unlikely(!__pyx_v_y1.memview)) { __Pyx_RaiseUnboundLocalError("y1"); __PYX_ERR(0, 342, __pyx_L1_error) }
+  if (unlikely(!__pyx_v_t1.memview)) { __Pyx_RaiseUnboundLocalError("t1"); __PYX_ERR(0, 342, __pyx_L1_error) }
+  if (unlikely(!__pyx_v_x2.memview)) { __Pyx_RaiseUnboundLocalError("x2"); __PYX_ERR(0, 342, __pyx_L1_error) }
+  if (unlikely(!__pyx_v_y2.memview)) { __Pyx_RaiseUnboundLocalError("y2"); __PYX_ERR(0, 342, __pyx_L1_error) }
+  if (unlikely(!__pyx_v_t2.memview)) { __Pyx_RaiseUnboundLocalError("t2"); __PYX_ERR(0, 342, __pyx_L1_error) }
   __pyx_t_2.__pyx_n = 2;
   __pyx_t_2.alpha = __pyx_v_alpha;
   __pyx_t_2.beta = __pyx_v_beta;
   __pyx_t_1 = __pyx_f_6octant_5utils_distance_metric(__pyx_v_x1, __pyx_v_y1, __pyx_v_t1, __pyx_v_x2, __pyx_v_y2, __pyx_v_t2, 0, &__pyx_t_2); 
-  __pyx_t_3 = PyFloat_FromDouble(__pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 319, __pyx_L1_error)
+  __pyx_t_3 = PyFloat_FromDouble(__pyx_t_1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 342, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_r = __pyx_t_3;
   __pyx_t_3 = 0;

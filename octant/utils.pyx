@@ -303,14 +303,37 @@ cdef double _traj_variance(double[:] x1,
     cdef int imax2 = x2.shape[0]
     cdef int i1, i2
     cdef double variance_sum
+    cdef double f0
+    cdef double f1
+    cdef double g0
+    cdef double g1
+    cdef double da1
+    cdef double da2
+    cdef double A1
+    cdef double A2
+
+    A1 = t1[imax1-1] - t1[0]
+    A2 = t2[imax2-1] - t2[0]
 
     variance_sum = 0
-    for i1 in range(imax1):
-        for i2 in range(imax2):
-            variance_sum += ( alpha * (_great_circle(x1[i1], x2[i2],
-                                                     y1[i1], y2[i2]) ** 2)
-                             + beta * ((t1[i1] - t2[i2])) ** 2 )
-    return variance_sum
+    for i1 in range(imax1-1):
+        da1 = t1[i1+1] - t1[i1]
+        for i2 in range(imax2-1):
+            da2 = t2[i2+1] - t2[i2]
+            f0 = ( alpha * (_great_circle(x1[i1], x2[i2],
+                                          y1[i1], y2[i2]) ** 2)
+                  + beta * ((t1[i1] - t2[i2])) ** 2 )
+            f1 = ( alpha * (_great_circle(x1[i1+1], x2[i2],
+                                          y1[i1+1], y2[i2]) ** 2)
+                  + beta * ((t1[i1+1] - t2[i2])) ** 2 )
+            g0 = ( alpha * (_great_circle(x1[i1], x2[i2+1],
+                                          y1[i1], y2[i2+1]) ** 2)
+                  + beta * ((t1[i1] - t2[i2+1])) ** 2 )
+            g1 = ( alpha * (_great_circle(x1[i1+1], x2[i2+1],
+                                          y1[i1+1], y2[i2+1]) ** 2)
+                  + beta * ((t1[i1+1] - t2[i2+1])) ** 2 )
+            variance_sum += 0.25 * (f0 + f1 + g0 + g1) * da1 * da2
+    return variance_sum / (A1 * A2)
 
 
 @cython.boundscheck(False)  # Deactivate bounds checking
@@ -379,9 +402,9 @@ cpdef double distance_metric(double[:] x1,
     A1 = t1_s[imax1-1] - t1_s[0]
     A2 = t2_s[imax2-1] - t2_s[0]
 
-    sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta) # / (A1 * A2)
-    sigma11 = _traj_variance(x1, y1, t1_s, x1, y1, t1_s, alpha=alpha, beta=beta) # / (A1 * A1)
-    sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta) # / (A2 * A2)
+    sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta)
+    sigma11 = _traj_variance(x1, y1, t1_s, x1, y1, t1_s, alpha=alpha, beta=beta)
+    sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta)
 
     dm = ((sigma12 - 0.5 * (sigma11 + sigma22)) / (A1 * A2)) ** 0.5
 
