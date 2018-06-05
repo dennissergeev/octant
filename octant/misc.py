@@ -3,7 +3,15 @@
 Miscellanea
 """
 import xarray as xr
-from tqdm import tqdm
+try:
+    # Check if it's Jupyter Notebook
+    ipy_str = str(type(get_ipython()))
+    if 'zmqshell' in ipy_str.lower():
+        from tqdm import tqdm_notebook as tqdm
+    else:
+        from tqdm import tqdm
+except NameError:
+    from tqdm import tqdm
 
 from .core import CATS
 
