@@ -2,6 +2,7 @@
 """
 Classes and functions for the analysis of PMCTRACK output
 """
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +13,7 @@ from .utils import (great_circle, mask_tracks,
                     track_density_rad, track_density_cell,
                     point_density_rad, point_density_cell,
                     distance_metric, total_dist)
-from .exceptions import ArgumentError, LoadError, NotYetImplementedError
+from .exceptions import ArgumentError, LoadError  # , NotYetImplementedError
 
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
@@ -538,12 +539,16 @@ class TrackRun:
 
         return match_pairs  # , dist_matrix
 
-    def point_density(self, lon2d, lat2d, subset='basic', method='radius',
-                      r=100.):
+    def density(self, lon2d, lat2d, by='point', subset='basic',
+                method='radius', r=222.,
+                exclude_first=dict(m=10, d=1), exclude_last=dict(m=4, d=30)):
         """
-        Calculate point density for a given lon-lat grid
+        Calculate different types of cyclone density for a given lon-lat grid:
 
-        Unlike `track_density`, this method counts all points of all tracks.
+        - `point`: all points of all tracks
+        - `track`: each track only once for a given cell or circle
+        - `genesis`: starting positions (excluding start date of tracking)
+        - `lysis`: ending positions (excluding final date of tracking)
 
         Arguments
         ---------
@@ -551,6 +556,8 @@ class TrackRun:
             Longitude grid
         lat2d: array of shape (M, N)
             Latitude grid
+        by: str, optional
+            Type of cyclone density (point|track|genesis|lysis)
         subset: str, optional
             Subset to match (basic|moderate|strong)
         method: str, optional
@@ -560,141 +567,57 @@ class TrackRun:
             Used when method='radius'
         Returns
         -------
-        dens: array of shape (M, N)
-            Numpy array of track density
+        dens: xarray.DataArray of shape (M, N)
+            Array of track density with useful metadata in attrs
         """
-        # if self._density is None or redo=True:
-        sub_data = self.data[self.data.cat >= self.cats[subset]].lonlat_c
+        # Prepare coordinates for cython
         lon2d_c = lon2d.astype('double', order='C')
         lat2d_c = lat2d.astype('double', order='C')
+        # Select subset
+        sub_df = self[subset]
+
+        # Select method
         if method == 'radius':
+            # Convert radius to metres
             r_metres = r * 1e3
-            dens = point_density_rad(lon2d_c, lat2d_c, sub_data, r_metres).base
+            units = f'per {round(np.pi * r**2)} km2'
+            if by == 'track':
+                cy_func = partial(track_density_rad, rad=r_metres)
+            else:
+                cy_func = partial(point_density_rad, rad=r_metres)
         elif method == 'cell':
-            dens = point_density_cell(lon2d_c, lat2d_c, sub_data).base
-        # else:
-        #     return self._density
-        return dens
+            # TODO: check cell-method and its units
+            units = '1'
+            if by == 'track':
+                cy_func = track_density_cell
+            else:
+                cy_func = point_density_cell
 
-    def track_density(self, lon2d, lat2d, subset='basic', method='radius',
-                      r=100.):
-        """
-        Calculate track density for a given lon-lat grid
+        # Convert dataframe columns to C-ordered arrays
+        if by == 'point':
+            sub_data = sub_df.lonlat_c
+        elif by == 'track':
+            sub_data = sub_df.tridlonlat_c
+        elif by == 'genesis':
+            sub_data = (sub_df
+                        .groupby('track_idx')
+                        .filter(exclude_by_first_day, **exclude_first)
+                        .xs(0, level='row_idx')).lonlat_c
+        elif by == 'lysis':
+            sub_data = (self[subset]
+                        .groupby('track_idx')
+                        .tail(1)
+                        .groupby('track_idx')
+                        .filter(exclude_by_last_day, **exclude_last)
+                        ).lonlat_c
 
-        Unlike `point_density`, this method counts each track only once for
-        a given cell or circle. In other words, if more than 1 point of a track
-        is within a radius (for method=radius), those extra points are ignored.
-
-        Arguments
-        ---------
-        lon2d: array of shape (M, N)
-            Longitude grid
-        lat2d: array of shape (M, N)
-            Latitude grid
-        subset: str, optional
-            Subset to match (basic|moderate|strong)
-        method: str, optional
-            Method to calculate density (radius|cell)
-        r: float, optional
-            Radius in km
-            Used when method='radius'
-        Returns
-        -------
-        dens: array of shape (M, N)
-            Numpy array of track density
-        """
-        sub_data = self.data[self.data.cat >= self.cats[subset]].tridlonlat_c
-        lon2d_c = lon2d.astype('double', order='C')
-        lat2d_c = lat2d.astype('double', order='C')
-        if method == 'radius':
-            r_metres = r * 1e3
-            dens = track_density_rad(lon2d_c, lat2d_c, sub_data, r_metres).base
-        elif method == 'cell':
-            dens = track_density_cell(lon2d_c, lat2d_c, sub_data).base
-        return dens
-
-    def genesis_density(self, lon2d, lat2d, subset='basic',
-                        method='radius', r=100., exclude=dict(m=10, d=1)):
-        """
-        Calculate track genesis density for a given lon-lat grid
-
-        Arguments
-        ---------
-        lon2d: array of shape (M, N)
-            Longitude grid
-        lat2d: array of shape (M, N)
-            Latitude grid
-        subset: str, optional
-            Subset to match (basic|moderate|strong)
-        method: str, optional
-            Method to calculate density (radius|cell)
-        r: float, optional
-            Radius in km
-            Used when method='radius'
-        exclude: dict, optional
-            Month and day pair to filter out tracks that start at the first
-            time step. Default is set to 1 October: (m=10, d=1)
-        Returns
-        -------
-        dens: array of shape (M, N)
-            Numpy array of track genesis density
-        """
-        if method == 'cell':
-            raise NotYetImplementedError()
-        sub_data = (self[subset]
-                    .groupby('track_idx')
-                    .filter(exclude_by_first_day, **exclude)
-                    .xs(0, level='row_idx')).lonlat_c
-        lon2d_c = lon2d.astype('double', order='C')
-        lat2d_c = lat2d.astype('double', order='C')
-        if method == 'radius':
-            r_metres = r * 1e3
-            dens = point_density_rad(lon2d_c, lat2d_c, sub_data, r_metres).base
-        elif method == 'cell':
-            dens = point_density_cell(lon2d_c, lat2d_c, sub_data).base
-        return dens
-
-    def lysis_density(self, lon2d, lat2d, subset='basic', method='radius',
-                      r=100., exclude=dict(m=10, d=1)):
-        """
-        Calculate track lysis density for a given lon-lat grid
-
-        Arguments
-        ---------
-        lon2d: array of shape (M, N)
-            Longitude grid
-        lat2d: array of shape (M, N)
-            Latitude grid
-        subset: str, optional
-            Subset to match (basic|moderate|strong)
-        method: str, optional
-            Method to calculate density (radius|cell)
-        r: float, optional
-            Radius in km
-            Used when method='radius'
-        exclude: dict, optional
-            Month and day pair to filter out tracks that end at the last
-            time step. Default is set to 30 April: (m=4, d=30)
-        Returns
-        -------
-        dens: array of shape (M, N)
-            Numpy array of track lysis density
-        """
-        if method == 'cell':
-            raise NotYetImplementedError()
-        sub_data = (self[subset]
-                    .groupby('track_idx')
-                    .tail(1)
-                    .groupby('track_idx')
-                    .filter(exclude_by_last_day, **exclude)
-                    ).lonlat_c
-        lon2d_c = lon2d.astype('double', order='C')
-        lat2d_c = lat2d.astype('double', order='C')
-        if method == 'radius':
-            r_metres = r * 1e3
-            dens = point_density_rad(lon2d_c, lat2d_c, sub_data, r_metres).base
-        elif method == 'cell':
-            dens = point_density_cell(lon2d_c, lat2d_c, sub_data).base
+        dens = xr.DataArray(cy_func(lon2d_c, lat2d_c, sub_data).base,
+                            name=f'{by}_density',
+                            attrs=dict(units=units, subset=subset,
+                                       method=method),
+                            dims=('latitude', 'longitude'),
+                            coords=dict(longitude=lon2d[0, :],
+                                        latitude=lat2d[:, 0]))
         return dens
 
 
