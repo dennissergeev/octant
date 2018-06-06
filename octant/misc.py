@@ -40,4 +40,4 @@ def calc_all_dens(tr_obj, lon2d, lat2d, method='radius', r=111.3 * 2):
                          method=method, r=r, subset=subset))
         list1.append(xr.concat(list2, dim=dens_dim))
     da = xr.concat(list1, dim=subset_dim)
-    return da
+    return da.rename('density')
