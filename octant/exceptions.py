@@ -26,3 +26,8 @@ class ArgumentError(OctantError):
 class LoadError(OctantError):
     """Raised when input files or directories are not found"""
     pass
+
+
+class GridError(OctantError):
+    """Raised when lon/lat grids are not correct"""
+    pass

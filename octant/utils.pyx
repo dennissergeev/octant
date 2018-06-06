@@ -111,8 +111,8 @@ cpdef double[:, ::1] point_density_cell(double[:, ::1] lon2d,
             for i in range(imax):
                 if ((lon2d[j, i  ] <= lonlat[p, 0])
                 and (lon2d[j, i+1] >  lonlat[p, 0])
-                and (lat2d[j, i  ] >  lonlat[p, 1])
-                and (lat2d[j+1, i] <= lonlat[p, 1])):
+                and (lat2d[j, i  ] <= lonlat[p, 1])
+                and (lat2d[j+1, i] >  lonlat[p, 1])):
                     count[j, i] = count[j, i] + 1
     return count
 
@@ -162,8 +162,8 @@ cpdef double[:, ::1] track_density_cell(double[:, ::1] lon2d,
                 if prev_track_idx != track_idx:
                     if ((lon2d[j, i  ] <= id_lon_lat[p, 1])
                     and (lon2d[j, i+1] >  id_lon_lat[p, 1])
-                    and (lat2d[j, i  ] >  id_lon_lat[p, 2])
-                    and (lat2d[j+1, i] <= id_lon_lat[p, 2])):
+                    and (lat2d[j, i  ] <= id_lon_lat[p, 2])
+                    and (lat2d[j+1, i] >  id_lon_lat[p, 2])):
                         count[j, i] = count[j, i] + 1
                         prev_track_idx = track_idx
     return count

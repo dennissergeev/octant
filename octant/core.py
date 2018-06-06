@@ -13,7 +13,7 @@ from .utils import (great_circle, mask_tracks,
                     track_density_rad, track_density_cell,
                     point_density_rad, point_density_cell,
                     distance_metric, total_dist)
-from .exceptions import ArgumentError, LoadError  # , NotYetImplementedError
+from .exceptions import ArgumentError, LoadError, GridError
 
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
@@ -587,6 +587,10 @@ class TrackRun:
                 cy_func = partial(point_density_rad, rad=r_metres)
         elif method == 'cell':
             # TODO: check cell-method and its units
+            # TODO: make this check more flexible
+            if ((np.diff(lon2d[0, :]) < 0).any() and
+               (np.diff(lat2d[:, 0]) < 0).any()):
+                raise GridError('Grid values must be in an ascending order')
             units = '1'
             if by == 'track':
                 cy_func = track_density_cell
