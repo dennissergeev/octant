@@ -439,8 +439,9 @@ class TrackRun:
             Index pairs of `other` vortices matching a vortex in `TrackRun`
             in a form (<index of `TrackRun` subset>, <index of `other`>)
         """
-        sub_gb = self.data[self.data.cat
-                           >= self.cats[subset]].groupby('track_idx')
+        sub_gb = self[subset].groupby('track_idx')
+        if len(sub_gb) == 0:
+            return []
         # TODO: convert to a dataframe?
         other_tracks = [OctantTrack.from_df(df) for df in others]
         match_pairs = []
