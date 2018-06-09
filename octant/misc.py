@@ -17,26 +17,26 @@ except NameError:
 from .core import CATS
 
 
-subsets = [i for i in CATS.keys() if i != 'unknown']
-density_types = ['point', 'track', 'genesis', 'lysis']
+SUBSETS = [i for i in CATS.keys() if i != 'unknown']
+DENSITY_TYPES = ['point', 'track', 'genesis', 'lysis']
 
 
 def calc_all_dens(tr_obj, lon2d, lat2d, method='radius', r=111.3 * 2):
     """
-    Calculate all types of cyclone density for all subsets of a TrackRun object
+    Calculate all types of cyclone density for all SUBSETS of a TrackRun object
 
     Returns
     -------
     da: xarray.DataArray
        4d array with dimensions (subset, dens_type, latitude, longitude)
     """
-    subset_dim = xr.DataArray(name='subset', dims=('subset'), data=subsets)
+    subset_dim = xr.DataArray(name='subset', dims=('subset'), data=SUBSETS)
     dens_dim = xr.DataArray(name='dens_type', dims=('dens_type'),
-                            data=density_types)
+                            data=DENSITY_TYPES)
     list1 = []
-    for subset in tqdm(subsets, leave=False):
+    for subset in tqdm(SUBSETS, leave=False):
         list2 = []
-        for by in tqdm(density_types, leave=False):
+        for by in tqdm(DENSITY_TYPES, leave=False):
             list2.append(tr_obj.density(lon2d, lat2d, by=by,
                          method=method, r=r, subset=subset))
         list1.append(xr.concat(list2, dim=dens_dim))
