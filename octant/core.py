@@ -410,7 +410,8 @@ class TrackRun:
 
     def match_tracks(self, others, subset='basic', method='simple',
                      interpolate_to='other',
-                     thresh_dist=250., time_frac_thresh=0.5, beta=100.):
+                     thresh_dist=250., time_frac_thresh=0.5,
+                     return_dist_matrix=False, beta=100.):
         """
         Match tracked vortices to a list of vortices from another data source
 
@@ -431,13 +432,18 @@ class TrackRun:
             Fraction of a vortex lifetime used as a threshold in 'intersection'
             and 'simple' methods
         beta: float, optional
-            $\beta$ parameter used in 'bs2000' method
-            E.g. $\beta=100$ corresponds to 10 m/s average steering wind
+            Parameter used in 'bs2000' method
+            E.g. beta=100 corresponds to 10 m/s average steering wind
+        return_dist_matrix: bool, optional
+            Used when method='bs2000'. If True, the method returns a tuple
+            of matching pairs and distance matrix used to calculate them
         Returns
         -------
         match_pairs: list
             Index pairs of `other` vortices matching a vortex in `TrackRun`
             in a form (<index of `TrackRun` subset>, <index of `other`>)
+        dist_matrix: numpy array of rank 2
+            returned if return_dist_matrix=True
         """
         sub_gb = self[subset].groupby('track_idx')
         if len(sub_gb) == 0:
@@ -534,11 +540,12 @@ class TrackRun:
                 for j, idx2 in enumerate(np.nanargmin(dist_matrix, axis=1)):
                     if i == idx2 and j == idx1:
                         match_pairs.append((sub_list[idx1], idx2))
-
+            if return_dist_matrix:
+                return match_pairs, dist_matrix
         else:
             raise ArgumentError(f'Unknown method: {method}')
 
-        return match_pairs  # , dist_matrix
+        return match_pairs
 
     def density(self, lon2d, lat2d, by='point', subset='basic',
                 method='radius', r=222.,
