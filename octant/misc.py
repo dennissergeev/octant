@@ -2,6 +2,7 @@
 """
 Miscellanea
 """
+import numpy as np
 import xarray as xr
 try:
     # Check if it's Jupyter Notebook
@@ -41,3 +42,37 @@ def calc_all_dens(tr_obj, lon2d, lat2d, method='radius', r=111.3 * 2):
         list1.append(xr.concat(list2, dim=dens_dim))
     da = xr.concat(list1, dim=subset_dim)
     return da.rename('density')
+
+
+def bin_count_tracks(tr_obj, start_year, n_winters, by='M'):
+    """
+    Take `octant.TrackRun` and count cyclone tracks by month or by winter
+
+    Returns
+    -------
+    counter: numpy array of shape (N,)
+        Binned counts
+    """
+    if by.upper() == 'M':
+        counter = np.zeros(12, dtype=int)
+        for _, df in tqdm(tr_obj.groupby('track_idx'),
+                          leave=False, desc='tracks'):
+            track_months = df.time.dt.month.unique()
+            for m in track_months:
+                counter[m-1] += 1
+    if by.upper() == 'W':
+        # winter
+        counter = np.zeros(n_winters, dtype=int)
+        for _, df in tqdm(tr_obj.groupby('track_idx'),
+                          leave=False, desc='tracks'):
+            track_months = df.time.dt.month.unique()
+            track_years = df.time.dt.year.unique()
+
+            for i in range(n_winters):
+                if track_months[-1] <= 6:
+                    if track_years[0] == i + start_year + 1:
+                        counter[i] += 1
+                else:
+                    if track_years[-1] == i + start_year:
+                        counter[i] += 1
+    return counter
