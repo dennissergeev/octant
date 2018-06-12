@@ -581,6 +581,13 @@ class TrackRun:
         # Prepare coordinates for cython
         lon2d_c = lon2d.astype('double', order='C')
         lat2d_c = lat2d.astype('double', order='C')
+        # Prepare coordinates for output
+        xlon = xr.IndexVariable(dims='longitude',
+                                data=lon2d[0, :],
+                                attrs=dict(units='degrees_east'))
+        xlat = xr.IndexVariable(dims='latitude',
+                                data=lat2d[:, 0],
+                                attrs=dict(units='degrees_north'))
         # Select subset
         sub_df = self[subset]
 
@@ -628,8 +635,7 @@ class TrackRun:
                             attrs=dict(units=units, subset=subset,
                                        method=method),
                             dims=('latitude', 'longitude'),
-                            coords=dict(longitude=lon2d[0, :],
-                                        latitude=lat2d[:, 0]))
+                            coords=dict(longitude=xlon, latitude=xlat))
         return dens
 
 
