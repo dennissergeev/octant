@@ -289,8 +289,10 @@ class TrackRun:
                 assert self.tstep_h == other.tstep_h
 
     def categorise(self, filt_by_time=True, filt_by_dist=True,
-                   filt_by_vort=True, filt_by_domain_bounds=True,
-                   filt_by_land=True, time_thresh0=6, time_thresh1=9,
+                   filt_by_vort=False, filt_by_domain_bounds=True,
+                   filt_by_land=True, filt_by_percentile=True,
+                   strong_percentile=95,
+                   time_thresh0=6, time_thresh1=9,
                    dist_thresh=300., type_thresh=0.2, lsm=None, coast_rad=50.,
                    vort_thresh0=3e-4, vort_thresh1=4.5e-4):
         """
@@ -340,7 +342,15 @@ class TrackRun:
             Vorticity threshold for strong filtering (s-1)
         vort_thresh1: float, optional
             Higher vorticity threshold for strong filtering (s-1)
+        filt_by_percentile: bool, optional
+            Filter strongest cyclones by the percentile of the maximum vort.
+        strong_percentile: float, optional
+            Percentile to define strong category of cyclones
+            E.g. 95 means the top 5% strongest cyclones.
         """
+        if filt_by_percentile and filt_by_vort:
+            raise ArgumentError(('Either filt_by_percentile or filt_by_vort'
+                                 'should be on'))
         # Save filtering params just in case
         self._cat_params = {k: v for k, v in locals().items() if k != 'self'}
         # 0. Prepare mask for spatial filtering
@@ -373,7 +383,6 @@ class TrackRun:
         for i, ot in self.gb:
             basic_flag = True
             moderate_flag = True
-            strong_flag = True
             # 1. Minimal filter
             # 1.1. Filter by duration threshold
             if (filt_by_time and (ot.lifetime_h < time_thresh0)):
@@ -398,14 +407,26 @@ class TrackRun:
                     self.data.loc[i, 'cat'] = self.cats['moderate']
                     # 3. Strong filter
                     # 3.1. Filter by vorticity [Watanabe et al., 2016, p.2509]
-                    if ((not (ot.vo > vort_thresh1).any()) or
-                        (not (((ot.vo > vort_thresh0).sum() > 1) and
-                              (ot.lifetime_h > time_thresh1)))):
-                        strong_flag = False
-                    if strong_flag:
+                    if filt_by_vort:
+                        if (
+                            (ot.vo > vort_thresh1).any() or
+                            (
+                             ((ot.vo > vort_thresh0).sum() > 1) and
+                             (ot.lifetime_h > time_thresh1)
+                            )
+                           ):
+                            self.data.loc[i, 'cat'] = self.cats['strong']
                         self.data.loc[i, 'cat'] = self.cats['strong']
             else:
                 self.data.loc[i, 'cat'] = self.cats['unknown']
+        if filt_by_percentile:
+            # 3.2 Filter by percentile-defined vorticity threshold
+            vo_per_track = (self['moderate'].groupby('track_idx')
+                            .apply(lambda x: x.max_vort))
+            vo_thresh = np.percentile(vo_per_track, strong_percentile)
+            strong = vo_per_track[vo_per_track > vo_thresh]
+            self.data.loc[strong.index, 'cat'] = self.cats['strong']
+
         self.is_categorised = True
 
     def match_tracks(self, others, subset='basic', method='simple',
