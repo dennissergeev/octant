@@ -438,8 +438,8 @@ class TrackRun:
 
         Arguments
         ---------
-        others: list
-            List of `pandas.DataFrame`s
+        others: list or octant.core.TrackRun
+            List of dataframes or a TrackRun instance
         subset: str, optional
             Subset to match (basic|moderate|strong)
         method: str, optional
@@ -467,14 +467,25 @@ class TrackRun:
             returned if return_dist_matrix=True
         """
         sub_gb = self[subset].groupby('track_idx')
-        if len(sub_gb) == 0:
+        if len(sub_gb) == 0 or len(others) == 0:
             return []
-        # TODO: convert to a dataframe?
-        other_tracks = [OctantTrack.from_df(df) for df in others]
+        if isinstance(others, list):
+            # match against a list of DataFrames of tracks
+            other_gb = (pd.concat([OctantTrack.from_df(df)
+                                   for df in others],
+                                  keys=range(len(others)),
+                                  names=self.mux_names)
+                        .groupby('track_idx'))
+        elif isinstance(others, self.__class__):
+            # match against another TrackRun
+            other_gb = others[subset].groupby('track_idx')
+        else:
+            raise ArgumentError('Argument "others" '
+                                f'has a wrong type: {type(others)}')
         match_pairs = []
         if method == 'intersection':
             for idx, ot in sub_gb:
-                for other_idx, other_ot in enumerate(other_tracks):
+                for other_idx, other_ot in other_gb:
                     times = other_ot.time.values
                     time_match_thresh = (time_frac_thresh
                                          * (times[-1] - times[0]) / HOUR)
@@ -482,23 +493,23 @@ class TrackRun:
                     intersect = pd.merge(other_ot, ot, how='inner',
                                          left_on='time', right_on='time')
                     n_match_times = intersect.shape[0]
-                    # = len(set(df.kt.values).intersection(set(stars_times)))
-                    dist = (intersect[['lon_x', 'lon_y', 'lat_x', 'lat_y']]
-                            .apply(lambda x: great_circle(*x.values),
-                                   axis=1))
-
-                    prox_time = ((dist < (thresh_dist * 1e3)).sum()
-                                 * self.tstep_h)
-                    if ((n_match_times * self.tstep_h > time_match_thresh)
-                       and prox_time > time_match_thresh):
-                        match_pairs.append((idx, other_idx))
-                        break
+                    if n_match_times > 0:
+                        _tstep_h = intersect.time.diff().values[-1] / HOUR
+                        dist = (intersect[['lon_x', 'lon_y', 'lat_x', 'lat_y']]
+                                .apply(lambda x: great_circle(*x.values),
+                                       axis=1))
+                        prox_time = ((dist < (thresh_dist * 1e3)).sum()
+                                     * _tstep_h)
+                        if ((n_match_times * _tstep_h > time_match_thresh)
+                           and prox_time > time_match_thresh):
+                            match_pairs.append((idx, other_idx))
+                            break
 
         elif method == 'simple':
             # TODO: explain
             ll = ['lon', 'lat']
             match_pairs = []
-            for other_idx, other_ct in enumerate(other_tracks):
+            for other_idx, other_ct in other_gb:
                 candidates = []
                 for idx, ct in sub_gb:
                     if interpolate_to == 'other':
@@ -548,11 +559,13 @@ class TrackRun:
                     match_pairs.append((final_idx, other_idx))
 
         elif method == 'bs2000':
-            dist_matrix = np.full((len(sub_gb), len(others)), 9e20)
-            sub_list = [i[0] for i in list(sub_gb)]
-            for i, (n, ct) in enumerate(sub_gb):
+            # sub_list = [i[0] for i in list(sub_gb)]
+            sub_indices = list(sub_gb.indices.keys())
+            other_indices = list(other_gb.indices.keys())
+            dist_matrix = np.full((len(sub_gb), len(other_gb)), 9e20)
+            for i, (_, ct) in enumerate(sub_gb):
                 x1, y1, t1 = ct.coord_view
-                for j, other_ct in enumerate(other_tracks):
+                for j, (_, other_ct) in enumerate(other_gb):
                     x2, y2, t2 = other_ct.coord_view
                     dist_matrix[i, j] = distance_metric(x1, y1, t1,
                                                         x2, y2, t2,
@@ -560,7 +573,8 @@ class TrackRun:
             for i, idx1 in enumerate(np.nanargmin(dist_matrix, axis=0)):
                 for j, idx2 in enumerate(np.nanargmin(dist_matrix, axis=1)):
                     if i == idx2 and j == idx1:
-                        match_pairs.append((sub_list[idx1], idx2))
+                        match_pairs.append((sub_indices[idx1],
+                                            other_indices[idx2]))
             if return_dist_matrix:
                 return match_pairs, dist_matrix
         else:
