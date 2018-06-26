@@ -416,7 +416,6 @@ class TrackRun:
                             )
                            ):
                             self.data.loc[i, 'cat'] = self.cats['strong']
-                        self.data.loc[i, 'cat'] = self.cats['strong']
             else:
                 self.data.loc[i, 'cat'] = self.cats['unknown']
         if filt_by_percentile:
