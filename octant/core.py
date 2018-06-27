@@ -422,9 +422,10 @@ class TrackRun:
             # 3.2 Filter by percentile-defined vorticity threshold
             vo_per_track = (self['moderate'].groupby('track_idx')
                             .apply(lambda x: x.max_vort))
-            vo_thresh = np.percentile(vo_per_track, strong_percentile)
-            strong = vo_per_track[vo_per_track > vo_thresh]
-            self.data.loc[strong.index, 'cat'] = self.cats['strong']
+            if len(vo_per_track) > 0:
+                vo_thresh = np.percentile(vo_per_track, strong_percentile)
+                strong = vo_per_track[vo_per_track > vo_thresh]
+                self.data.loc[strong.index, 'cat'] = self.cats['strong']
 
         self.is_categorised = True
 
