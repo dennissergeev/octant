@@ -4,17 +4,9 @@ Miscellanea
 """
 import numpy as np
 import xarray as xr
-try:
-    # Check if it's Jupyter Notebook
-    ipy_str = str(type(get_ipython()))
-    if 'zmqshell' in ipy_str.lower():
-        from tqdm import tqdm_notebook as tqdm
-    else:
-        from tqdm import tqdm
-except NameError:
-    from tqdm import tqdm
 
 from .core import CATS
+from . import pbar
 
 
 SUBSETS = [i for i in CATS.keys() if i != 'unknown']
@@ -34,9 +26,9 @@ def calc_all_dens(tr_obj, lon2d, lat2d, method='radius', r=111.3 * 2):
     dens_dim = xr.DataArray(name='dens_type', dims=('dens_type'),
                             data=DENSITY_TYPES)
     list1 = []
-    for subset in tqdm(SUBSETS, leave=False):
+    for subset in pbar(SUBSETS, leave=False):
         list2 = []
-        for by in tqdm(DENSITY_TYPES, leave=False):
+        for by in pbar(DENSITY_TYPES, leave=False):
             list2.append(tr_obj.density(lon2d, lat2d, by=by,
                          method=method, r=r, subset=subset))
         list1.append(xr.concat(list2, dim=dens_dim))
@@ -55,7 +47,7 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by='M'):
     """
     if by.upper() == 'M':
         counter = np.zeros(12, dtype=int)
-        for _, df in tqdm(tr_obj.groupby('track_idx'),
+        for _, df in pbar(tr_obj.groupby('track_idx'),
                           leave=False, desc='tracks'):
             track_months = df.time.dt.month.unique()
             for m in track_months:
@@ -63,7 +55,7 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by='M'):
     if by.upper() == 'W':
         # winter
         counter = np.zeros(n_winters, dtype=int)
-        for _, df in tqdm(tr_obj.groupby('track_idx'),
+        for _, df in pbar(tr_obj.groupby('track_idx'),
                           leave=False, desc='tracks'):
             track_months = df.time.dt.month.unique()
             track_years = df.time.dt.year.unique()
