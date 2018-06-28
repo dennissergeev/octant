@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from .decor import pbar
 from .utils import (great_circle, mask_tracks,
                     track_density_rad, track_density_cell,
                     point_density_rad, point_density_cell,
@@ -380,7 +381,7 @@ class TrackRun:
             lon2d_c = lon2d.astype('double', order='C')
             lat2d_c = lat2d.astype('double', order='C')
 
-        for i, ot in self.gb:
+        for i, ot in pbar(self.gb, desc='tracks'):
             basic_flag = True
             moderate_flag = True
             # 1. Minimal filter
@@ -484,8 +485,9 @@ class TrackRun:
                                 f'has a wrong type: {type(others)}')
         match_pairs = []
         if method == 'intersection':
-            for idx, ot in sub_gb:
-                for other_idx, other_ot in other_gb:
+            for idx, ot in pbar(sub_gb, desc='self tracks'):
+                for other_idx, other_ot in pbar(other_gb, desc='other tracks',
+                                                leave=False):
                     times = other_ot.time.values
                     time_match_thresh = (time_frac_thresh
                                          * (times[-1] - times[0]) / HOUR)
@@ -509,9 +511,9 @@ class TrackRun:
             # TODO: explain
             ll = ['lon', 'lat']
             match_pairs = []
-            for other_idx, other_ct in other_gb:
+            for other_idx, other_ct in pbar(other_gb, desc='other tracks'):
                 candidates = []
-                for idx, ct in sub_gb:
+                for idx, ct in pbar(sub_gb, leave=False, desc='self tracks'):
                     if interpolate_to == 'other':
                         df1, df2 = ct.copy(), other_ct
                     elif interpolate_to == 'self':
@@ -563,9 +565,10 @@ class TrackRun:
             sub_indices = list(sub_gb.indices.keys())
             other_indices = list(other_gb.indices.keys())
             dist_matrix = np.full((len(sub_gb), len(other_gb)), 9e20)
-            for i, (_, ct) in enumerate(sub_gb):
+            for i, (_, ct) in pbar(enumerate(sub_gb), desc='self tracks'):
                 x1, y1, t1 = ct.coord_view
-                for j, (_, other_ct) in enumerate(other_gb):
+                for j, (_, other_ct) in pbar(enumerate(other_gb),
+                                             desc='other tracks', leave=False):
                     x2, y2, t2 = other_ct.coord_view
                     dist_matrix[i, j] = distance_metric(x1, y1, t1,
                                                         x2, y2, t2,

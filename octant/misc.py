@@ -6,7 +6,7 @@ import numpy as np
 import xarray as xr
 
 from .core import CATS
-from . import pbar
+from .decor import pbar
 
 
 SUBSETS = [i for i in CATS.keys() if i != 'unknown']
@@ -26,9 +26,9 @@ def calc_all_dens(tr_obj, lon2d, lat2d, method='radius', r=111.3 * 2):
     dens_dim = xr.DataArray(name='dens_type', dims=('dens_type'),
                             data=DENSITY_TYPES)
     list1 = []
-    for subset in pbar(SUBSETS, leave=False):
+    for subset in pbar(SUBSETS, leave=False, desc='subsets'):
         list2 = []
-        for by in pbar(DENSITY_TYPES, leave=False):
+        for by in pbar(DENSITY_TYPES, leave=False, desc='density_types'):
             list2.append(tr_obj.density(lon2d, lat2d, by=by,
                          method=method, r=r, subset=subset))
         list1.append(xr.concat(list2, dim=dens_dim))
