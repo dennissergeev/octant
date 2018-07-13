@@ -49,11 +49,10 @@ setup(
     setup_requires=['numpy', 'cython'],
     install_requires=['numpy', 'pytest', 'cython', 'pandas', 'xarray'],
     classifiers=[
-        "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.6",
         "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python :: 3.6",
         "Topic :: Scientific/Engineering :: Atmospheric Science"
     ],
 )
