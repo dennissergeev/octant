@@ -1,16 +1,21 @@
-from octant import core
+"""Test the core submodule."""
 from pathlib import Path
+
+from octant import core
+
 import pytest
 
-TEST_DIR = Path('.') / 'test_data'
+TEST_DIR = Path(__file__).parent / 'test_data'
 
 
 @pytest.fixture(scope='module')
 def trackrun():
+    """Load and cache data."""
     return core.TrackRun(TEST_DIR)
 
 
 def test_load_data():
+    """Create an empty TrackRun instance and load data afterwards."""
     tr = core.TrackRun()
     tr.load_data(TEST_DIR)
     assert len(tr) == 58
@@ -19,6 +24,7 @@ def test_load_data():
 
 
 def test_categorise(trackrun):
+    """Use cached TrackRun instance and test categorise() method."""
     trackrun.categorise()
     assert trackrun.is_categorised
     assert trackrun.size('basic') == 21
@@ -27,6 +33,7 @@ def test_categorise(trackrun):
 
 
 def test_conf(trackrun):
+    """Use cached TrackRun instance and check the configuration attribute."""
     assert hasattr(trackrun, 'conf')
     assert len(trackrun.conf) == 43
     assert len(trackrun.conf.extent) == 4
