@@ -1,0 +1,5 @@
+numpy
+pytest
+cython
+pandas
+xarray
