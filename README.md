@@ -8,7 +8,12 @@
 Objective Cyclone Tracking ANalysis Tools
 
 ## Installation
-Install it in the correct environment, which has the required packages installed!
+`octant` depends on the following packages:
+  - cython
+  - matplotlib
+  - numpy
+  - pandas
+  - xarray
 
 ### With conda
 ```bash

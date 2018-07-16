@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Bells and whistles
-"""
+"""Bells and whistles."""
 # global DISABLE_TQDM
 # TODO: global runtime switch
 DISABLE_TQDM = False
@@ -18,8 +16,8 @@ try:
     except NameError:
         from tqdm import tqdm
     from functools import partial
-    pbar = partial(tqdm, disable=DISABLE_TQDM)
+    pbar = partial(tqdm, leave=False, disable=DISABLE_TQDM)
 except ImportError:
     def pbar(obj, **tqdm_kw):
-        """ Empty progress bar """
+        """Empty progress bar."""
         return obj
