@@ -1,17 +1,40 @@
 """Test the core submodule."""
+from datetime import datetime
 from pathlib import Path
+
+import numpy as np
 
 from octant import core
 
+import pandas as pd
+
 import pytest
 
-TEST_DIR = Path(__file__).parent / 'test_data'
+TEST_DIR = Path(__file__).parent / 'test_data' / 'era5_run000'
+REF_DM = Path(__file__).parent / 'test_data' / 'distance_matrix.npy'
+REF_FILE = Path(__file__).parent / 'test_data' / 'pmc_loc_time_ch4_20Mar-02Apr.txt'
 
 
 @pytest.fixture(scope='module')
 def trackrun():
     """Load and cache data."""
     return core.TrackRun(TEST_DIR)
+
+
+@pytest.fixture(scope='module')
+def ref_set():
+    """Load reference dataset."""
+    ref = pd.read_csv(REF_FILE, delimiter='\t',
+                      names=['N', 'time', 'lon', 'lat'],
+                      parse_dates=['time'],
+                      date_parser=lambda x: datetime.strptime(x, '%Y%m%d%H%M'))
+    ref_tracks = []
+    for i, df in ref.groupby('N'):
+        ot = core.OctantTrack.from_df(df)
+        if ot.lifetime_h >= 6:
+            ref_tracks.append(ot)
+    assert len(ref_tracks) == 27
+    return ref_tracks
 
 
 def test_load_data():
@@ -38,3 +61,15 @@ def test_conf(trackrun):
     assert len(trackrun.conf) == 43
     assert len(trackrun.conf.extent) == 4
     assert trackrun.conf.extent == [-10, 40, 67, 78]
+
+
+def test_match_bs2000(trackrun, ref_set):
+    """Use cached TrackRun and tracks from ref_set to test match_tracks() method."""
+    subset = 'moderate'
+    match_pairs, dm = trackrun.match_tracks(ref_set, subset=subset,
+                                            method='bs2000', beta=50.,
+                                            return_dist_matrix=True)
+    assert len(match_pairs) == 5
+    assert dm.shape == (trackrun.size(subset), len(ref_set))
+    actual_dm = np.load(REF_DM)
+    np.testing.assert_almost_equal(actual_dm, dm)

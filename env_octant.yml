@@ -11,7 +11,8 @@ dependencies:
 - python=3.6
 - pytest
 - scipy
-- tqdm
+# - tqdm
+# - octant
 - xarray
 - sphinx
 - sphinx-gallery
