@@ -7,7 +7,7 @@ import Cython.Build
 
 import numpy as np
 
-from setuptools import Extension, setup
+from setuptools import Extension, find_packages, setup
 
 
 # Publish the library to PyPI.
@@ -43,7 +43,7 @@ setup(
     url='https://github.com/dennissergeev/octant',
     cmdclass={'build_ext': Cython.Build.build_ext},
     package_dir={'octant': 'octant'},
-    packages=['octant'],
+    packages=find_packages(),
     ext_modules=[Extension(
         'octant.utils',
         sources=['octant/utils.pyx'],

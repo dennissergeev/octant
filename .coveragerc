@@ -1,8 +1,14 @@
 [run]
+plugins = Cython.Coverage
 branch = True
 source = octant/*
 include = octant/*
-omit = */setup.py,*/version.py
-plugins = Cython.Coverage
+
 [report]
 include = octant/*
+omit =
+    */setup.py
+    */version.py
+    docs/*
+    octant/tests/*
+    *__init__*

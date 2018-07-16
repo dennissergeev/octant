@@ -2,6 +2,7 @@ language: python
 python:
   # We don't actually use the Travis Python, but this keeps it organized.
   - "3.6"
+
 install:
   - sudo apt-get update
   # We do this conditionally because it saves us some downloading if the
@@ -22,4 +23,11 @@ install:
   - python setup.py install
 
 script:
-  - pytest
+  # Create an isolated test directory to make sure we test against the
+  # installed package rather than the source:
+  # - mkdir ../test_directory
+  # - cd ../test_directory
+  - pytest octant --cov=octant --cov-config .coveragerc --cov-report term-missing -v
+
+notifications:
+    email: false
