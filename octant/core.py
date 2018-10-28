@@ -4,6 +4,7 @@ Classes and functions for the analysis of PMCTRACK output
 """
 from functools import partial
 from pathlib import Path
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -14,7 +15,7 @@ from .utils import (great_circle, mask_tracks,
                     track_density_rad, track_density_cell,
                     point_density_rad, point_density_cell,
                     distance_metric, total_dist)
-from .exceptions import ArgumentError, LoadError, GridError
+from .exceptions import ArgumentError, LoadError, GridError, MissingConfWarning
 
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
@@ -244,7 +245,9 @@ class TrackRun:
                 conf_file = list(dirname.glob('*.conf'))[0]
                 self.conf = TrackSettings(conf_file)
             except (IndexError, AttributeError):
-                pass
+                msg = ("Track settings file (.conf) in the `dirname` directory"
+                       "is missing or could not be read")
+                warnings.warn(msg, MissingConfWarning)
 
         # Load the tracks
         _data = []

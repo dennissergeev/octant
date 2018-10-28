@@ -4,6 +4,16 @@ Exceptions specific to octant package.
 """
 
 
+class OctantWarning(UserWarning):
+    """Base class for warnings in octant package."""
+    pass
+
+
+class MissingConfWarning(OctantWarning):
+    """Tracking settings file (.conf) is missing in the tracks directory"""
+    pass
+
+
 class OctantError(Exception):
     """Base class for errors in octant package."""
     pass
