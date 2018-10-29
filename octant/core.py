@@ -21,7 +21,7 @@ HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
 
 CATS = {'unknown': 0, 'basic': 1, 'moderate': 2, 'strong': 3}
-COLUMNS = ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type', 'cat']
+COLUMNS = ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type']  # , 'cat']
 ARCH_KEY = 'trackrun'
 
 
@@ -170,14 +170,10 @@ class TrackRun:
 
     """
 
-    # Keywords for `pandas.read_csv()` used in `load_data()` method
-    _load_kw = {'delimiter': '\s+',  # noqa
-                'names': ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type'],
-                'parse_dates': ['time']}
     mux_names = ['track_idx', 'row_idx']
     cats = CATS
 
-    def __init__(self, dirname=None):
+    def __init__(self, dirname=None, columns=COLUMNS):
         """
         Initialise octant.core.TrackRun.
 
@@ -186,11 +182,13 @@ class TrackRun:
         dirname: pathlib.Path or path.Path, optional
             Path to the directory with tracking output
             If present, load the data during on init
+        columns: sequence of str, optional
+            List of column names. Should contain 'time' to parse datetimes.
         """
         self.dirname = dirname
         self.conf = None
         mux = pd.MultiIndex.from_arrays([[], []], names=self.mux_names)
-        self.data = OctantTrack(index=mux, columns=COLUMNS)
+        self.data = OctantTrack(index=mux, columns=columns)
         self.filelist = []
         self.sources = []
         self.is_categorised = False
@@ -198,7 +196,7 @@ class TrackRun:
         if isinstance(self.dirname, Path):
             # Read all files and store in self.all
             # as a list of `pandas.DataFrame`s
-            self.load_data(self.dirname)
+            self.load_data(self.dirname, columns=columns)
         elif self.dirname is not None:
             raise LoadError('dirname should be Path-like object')
 
@@ -239,8 +237,8 @@ class TrackRun:
         """Size of subset of tracks."""
         return self[subset].index.get_level_values(0).to_series().nunique()
 
-    def load_data(self, dirname, primary_only=True, conf_file=None,
-                  scale_vo=1e-3):
+    def load_data(self, dirname, columns=COLUMNS, primary_only=True,
+                  conf_file=None, scale_vo=1e-3):
         """
         Read tracking results from a directory into `TrackRun.data` attribute.
 
@@ -248,6 +246,8 @@ class TrackRun:
         ---------
         dirname: pathlib.Path or path.Path
             Path to the directory with tracking output
+        columns: sequence of str, optional
+            List of column names. Should contain 'time' to parse datetimes.
         conf_file: pathlib.Path or path.Path, optional
             Path to the configuration file. If omitted, an attempt is
             made to find a .conf file in the `dirname` directory
@@ -278,10 +278,12 @@ class TrackRun:
                 warnings.warn(msg, MissingConfWarning)
 
         # Load the tracks
+        load_kw = {'delimiter': r'\s+',  # noqa
+                   'names': columns,
+                   'parse_dates': ['time']}
         _data = []
         for fname in self.filelist:
-            _data.append(OctantTrack.from_df(pd.read_csv(fname,
-                                                         **self._load_kw)))
+            _data.append(OctantTrack.from_df(pd.read_csv(fname, **load_kw)))
         if len(_data) > 0:
             self.data = pd.concat(_data, keys=range(len(_data)),
                                   names=self.mux_names)
