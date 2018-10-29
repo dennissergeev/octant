@@ -1,10 +1,14 @@
 """Test the core submodule."""
+import contextlib
+import itertools
+import shutil
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 
-from octant import core
+from octant import core, parts
 
 import pandas as pd
 
@@ -13,6 +17,27 @@ import pytest
 TEST_DIR = Path(__file__).parent / 'test_data' / 'era5_run000'
 REF_DM = Path(__file__).parent / 'test_data' / 'distance_matrix.npy'
 REF_FILE = Path(__file__).parent / 'test_data' / 'pmc_loc_time_ch4_20Mar-02Apr.txt'
+
+_counter = itertools.count()
+
+
+@contextlib.contextmanager
+def create_tmp_file(suffix='.h5', allow_cleanup_failure=False):
+    """
+    Temporary file context.
+
+    Code taken from xarray test module
+    """
+    temp_dir = Path(tempfile.mkdtemp())
+    path = temp_dir / 'temp-{}{}'.format(next(_counter), suffix)
+    try:
+        yield path
+    finally:
+        try:
+            shutil.rmtree(temp_dir)
+        except OSError:
+            if not allow_cleanup_failure:
+                raise
 
 
 @pytest.fixture(scope='module')
@@ -44,6 +69,17 @@ def test_load_data():
     assert len(tr) == 76
     assert tr.size() == 76
     assert not tr.is_categorised
+
+
+def test_archive(trackrun):
+    """Test to_archive() and from_archive() methods."""
+    with create_tmp_file() as f:
+        trackrun.to_archive(f)
+        another = core.TrackRun.from_archive(f)
+        assert another.data.equals(trackrun.data)
+        assert another.sources == trackrun.sources
+        assert hasattr(another, 'conf')
+        assert isinstance(another.conf, parts.TrackSettings)
 
 
 def test_categorise(trackrun):

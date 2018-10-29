@@ -22,6 +22,7 @@ m2km = 1e-3
 
 CATS = dict(unknown=0, basic=1, moderate=2, strong=3)
 COLUMNS = ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type', 'cat']
+ARCH_KEY = 'trackrun'
 
 
 def exclude_by_first_day(df, m, d):
@@ -261,6 +262,46 @@ class TrackRun:
             # Scale vorticity to (s-1)
             self.data['vo'] *= scale_vo
         del _data
+
+    @classmethod
+    def from_archive(cls, filename):
+        """
+        Construct TrackRun object from HDF5 file.
+
+        Arguments
+        ---------
+        filename: str
+            File path to HDF5 file
+
+        Returns
+        -------
+        octant.core.TrackRun
+        """
+        with pd.HDFStore(filename, mode='r') as store:
+            df = store[ARCH_KEY]
+            metadata = store.get_storer(ARCH_KEY).attrs.metadata
+        tr = cls()
+        tr.data = OctantTrack.from_mux_df(df.set_index(cls.mux_names))
+        metadata['conf'] = TrackSettings.from_dict(metadata['conf'])
+        tr.__dict__.update(metadata)
+        return tr
+
+    def to_archive(self, filename):
+        """
+        Save TrackRun and its metadata to HDF5 file
+
+        Arguments
+        ---------
+        filename: str
+            File path to HDF5 file
+        """
+        with pd.HDFStore(filename, mode='w') as store:
+            df = pd.DataFrame.from_records(self.data.to_records(index=True))
+            store.put(ARCH_KEY, df)
+            metadata = {k: v for k, v in self.__dict__.items()
+                        if k not in ['data', 'filelist', 'conf']}
+            metadata['conf'] = self.conf.to_dict()
+            store.get_storer(ARCH_KEY).attrs.metadata = metadata
 
     def extend(self, other, adapt_conf=True):
         """
