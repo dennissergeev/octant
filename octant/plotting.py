@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-"""
-Plotting functions for octant package
-"""
+"""Plotting functions for octant package."""
 import cartopy.crs as ccrs
 from cartopy.mpl.geoaxes import GeoAxesSubplot
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+from cartopy.mpl.gridliner import LATITUDE_FORMATTER, LONGITUDE_FORMATTER
+
 import matplotlib.pyplot as plt
 
 DFLT_TRANSFORM = ccrs.PlateCarree()
@@ -13,7 +12,7 @@ DFLT_COLOR = 'C0'
 
 def plot(df, ax=None, transform=DFLT_TRANSFORM, **kwargs):
     """
-    Plot cyclone track using as a line plot (using matplotlib.pyplot.plot()).
+    Draw cyclone track using as a line plot.
 
     Closed circle shows the beginning, open circle - the end of the track.
 
@@ -46,7 +45,7 @@ def plot(df, ax=None, transform=DFLT_TRANSFORM, **kwargs):
         gl.yformatter = LATITUDE_FORMATTER
         ax.coastlines()
     if isinstance(ax, GeoAxesSubplot):
-        mapkw = dict(transform=transform)
+        mapkw = {'transform': transform}
     else:
         mapkw = {}
     color = kwargs.pop('color', DFLT_COLOR)

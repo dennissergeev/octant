@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-Miscellanea
-"""
+"""Miscellanea."""
 import numpy as np
+
 import xarray as xr
 
 from .core import CATS
@@ -15,12 +14,22 @@ DENSITY_TYPES = ['point', 'track', 'genesis', 'lysis']
 
 def calc_all_dens(tr_obj, lon2d, lat2d, method='radius', r=111.3 * 2):
     """
-    Calculate all types of cyclone density for all SUBSETS of a TrackRun object
+    Calculate all types of cyclone density for all SUBSETS of TrackRun.
+
+    Arguments
+    ---------
+    lon2d: numpy.ndarray
+        2D array of longitudes
+    lat2d: numpy.ndarray
+        2D array of latitudes
+    method: str
+        Method used in octant.core.TrackRun.density()
 
     Returns
     -------
     da: xarray.DataArray
        4d array with dimensions (subset, dens_type, latitude, longitude)
+
     """
     subset_dim = xr.DataArray(name='subset', dims=('subset'), data=SUBSETS)
     dens_dim = xr.DataArray(name='dens_type', dims=('dens_type'),
@@ -38,12 +47,13 @@ def calc_all_dens(tr_obj, lon2d, lat2d, method='radius', r=111.3 * 2):
 
 def bin_count_tracks(tr_obj, start_year, n_winters, by='M'):
     """
-    Take `octant.TrackRun` and count cyclone tracks by month or by winter
+    Take `octant.TrackRun` and count cyclone tracks by month or by winter.
 
     Returns
     -------
     counter: numpy array of shape (N,)
         Binned counts
+
     """
     if by.upper() == 'M':
         counter = np.zeros(12, dtype=int)

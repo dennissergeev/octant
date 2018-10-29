@@ -59,6 +59,7 @@ class TrackSettings:
 
     @property
     def extent(self):
+        """List of lon1, lon2, lat1, lat2 showing the region used for tracking."""
         extent_keys = ['lon1', 'lon2', 'lat1', 'lat2']
         extent = []
         for k in extent_keys:
@@ -68,14 +69,14 @@ class TrackSettings:
                 extent.append(None)
         return extent
 
-    def __len__(self):
+    def __len__(self):  # noqa
         return len(self._fields)
 
-    def __repr__(self):
+    def __repr__(self):  # noqa
         return ('Settings used for '
                 f'PMC tracking algorithm ({len(self)})')
 
-    def __str__(self):
+    def __str__(self):  # noqa
         summary = '\n'.join([f'{k} = {getattr(self, k, None)}'
                              for k in self._fields])
         return f'Settings used for PMC tracking algorithm:\n\n{summary}'
@@ -97,6 +98,7 @@ class TrackSettings:
         Returns
         -------
         octant.parts.TrackSettings
+
         """
         ts = cls()
         ts.__dict__.update(data)

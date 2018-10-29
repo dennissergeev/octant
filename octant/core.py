@@ -20,22 +20,26 @@ from .utils import (distance_metric, great_circle, mask_tracks,
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
 
-CATS = dict(unknown=0, basic=1, moderate=2, strong=3)
+CATS = {'unknown': 0, 'basic': 1, 'moderate': 2, 'strong': 3}
 COLUMNS = ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type', 'cat']
 ARCH_KEY = 'trackrun'
 
 
 def exclude_by_first_day(df, m, d):
+    """Check if OctantTrack starts on certain day and month."""
     return not ((df.time.dt.month[0] == m).any()
                 and (df.time.dt.day[0] == d).any())
 
 
 def exclude_by_last_day(df, m, d):
+    """Check if OctantTrack ends on certain day and month."""
     return not ((df.time.dt.month[-1] == m).any()
                 and (df.time.dt.day[-1] == d).any())
 
 
 class OctantSeries(pd.Series):
+    """`pandas.Series` subclass used in octant library."""
+
     @property
     def _constructor(self):
         return OctantSeries
@@ -43,11 +47,13 @@ class OctantSeries(pd.Series):
 
 class OctantTrack(pd.DataFrame):
     """
-    Instance of cyclone track
+    Instance of cyclone track.
 
-    Subclass of `pandas.DataFrame`
+    Subclass of `pandas.DataFrame`.
     """
+
     def __init__(self, *args, **kw):
+        """Initialise octant.core.OctantTrack."""
         super(OctantTrack, self).__init__(*args, **kw)
 
     @property
@@ -58,60 +64,73 @@ class OctantTrack(pd.DataFrame):
 
     @classmethod
     def from_df(cls, df):
+        """Create OctantTrack from pandas.DataFrame."""
         return cls.from_records(df.to_records(index=False))
 
     @classmethod
     def from_mux_df(cls, df):
+        """Create OctantTrack from a multi-index pandas.DataFrame."""
         return cls.from_records(df.to_records(index=True),
                                 index=df.index.names)
 
     @property
     def coord_view(self):
+        """Numpy view of track coordinates: longitude, latitude, time."""
         return (self.lon.values.view('double'),
                 self.lat.values.view('double'),
                 self.time.values.view('int64'))
 
     @property
     def lonlat(self):
+        """Values of longitude and latitude as 2D numpy array."""
         return self[['lon', 'lat']].values
 
     @property
     def lonlat_c(self):
+        """Values of longitude and latitude as C-ordered 2D numpy array."""
         return self.lonlat.astype('double', order='C')
 
     @property
     def tridlonlat(self):
+        """Values of track index, longitude, latitude as 2D numpy array."""
         return (self.reset_index('track_idx')
                 [['track_idx', 'lon', 'lat']].values)
 
     @property
     def tridlonlat_c(self):
+        """Values of track index, longitude, latitude as C-order 2D array."""
         return self.tridlonlat.astype('double', order='C')
 
     @property
     def lifetime_h(self):
+        """Track duration in hours."""
         return (self.time.values[-1]
                 - self.time.values[0]) / HOUR
 
     @property
     def gen_lys_dist_km(self):
+        """Distance between genesis and lysis of the cyclone track in km."""
         return great_circle(self.lonlat[0, 0], self.lonlat[-1, 0],
                             self.lonlat[0, 1], self.lonlat[-1, 1]) * m2km
 
     @property
     def total_dist_km(self):
+        """Total track distance in km."""
         return total_dist(self.lonlat_c) * m2km
 
     @property
     def average_speed(self):
+        """Average cyclone propagation speed in km per hour."""
         return self.total_dist_km / self.lifetime_h
 
     @property
     def max_vort(self):
+        """Maximum vorticity of the cyclone track."""
         return np.nanmax(self.vo.values)
 
     @property
     def mean_vort(self):
+        """Mean vorticity of the cyclone track."""
         return np.nanmean(self.vo.values)
 
     def plot_track(self, ax=None, **kwargs):
@@ -140,7 +159,7 @@ class OctantTrack(pd.DataFrame):
 
 class TrackRun:
     """
-    Results of tracking experiment
+    Results of tracking experiment.
 
     Attributes
     ----------
@@ -148,16 +167,20 @@ class TrackRun:
         list of "vortrack" files
     conf: TrackSettings
         Configuration used for tracking
+
     """
+
     # Keywords for `pandas.read_csv()` used in `load_data()` method
-    _load_kw = dict(delimiter='\s+',
-                    names=['lon', 'lat', 'vo', 'time', 'area', 'vortex_type'],
-                    parse_dates=['time'])
+    _load_kw = {'delimiter': '\s+',  # noqa
+                'names': ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type'],
+                'parse_dates': ['time']}
     mux_names = ['track_idx', 'row_idx']
     cats = CATS
 
     def __init__(self, dirname=None):
         """
+        Initialise octant.core.TrackRun.
+
         Arguments
         ---------
         dirname: pathlib.Path or path.Path, optional
@@ -187,19 +210,21 @@ class TrackRun:
                     break
 
     def __len__(self):
+        """Get the number of cyclone tracks within TrackRun."""
         return self.data.index.get_level_values(0).to_series().nunique()
 
-    def __repr__(self):
+    def __repr__(self):  # noqa
         s = '\n'.join(self.sources)
         return f'TrackRun({s}, {(len(self))})'
 
     def __add__(self, other):
+        """Combine two TrackRun objects together."""
         new = self.__class__()
         new.extend(self)
         new.extend(other)
         return new
 
-    def __getitem__(self, subset):
+    def __getitem__(self, subset):  # noqa
         if subset in [slice(None), None, 'all']:
             return self.data
         else:
@@ -207,16 +232,18 @@ class TrackRun:
 
     @property
     def gb(self):
-        """ Group by track index """
+        """Group by track index."""
         return self.data.groupby('track_idx')
 
     def size(self, subset=None):
-        """ Size of subset of tracks """
+        """Size of subset of tracks."""
         return self[subset].index.get_level_values(0).to_series().nunique()
 
     def load_data(self, dirname, primary_only=True, conf_file=None,
                   scale_vo=1e-3):
         """
+        Read tracking results from a directory into `TrackRun.data` attribute.
+
         Arguments
         ---------
         dirname: pathlib.Path or path.Path
@@ -246,8 +273,8 @@ class TrackRun:
                 conf_file = list(dirname.glob('*.conf'))[0]
                 self.conf = TrackSettings(conf_file)
             except (IndexError, AttributeError):
-                msg = ("Track settings file (.conf) in the `dirname` directory"
-                       "is missing or could not be read")
+                msg = ('Track settings file (.conf) in the `dirname` directory'
+                       'is missing or could not be read')
                 warnings.warn(msg, MissingConfWarning)
 
         # Load the tracks
@@ -276,6 +303,7 @@ class TrackRun:
         Returns
         -------
         octant.core.TrackRun
+
         """
         with pd.HDFStore(filename, mode='r') as store:
             df = store[ARCH_KEY]
@@ -288,7 +316,7 @@ class TrackRun:
 
     def to_archive(self, filename):
         """
-        Save TrackRun and its metadata to HDF5 file
+        Save TrackRun and its metadata to HDF5 file.
 
         Arguments
         ---------
@@ -305,10 +333,15 @@ class TrackRun:
 
     def extend(self, other, adapt_conf=True):
         """
-        Extend the TrackRun by appending elements from another TrackRun
+        Extend the TrackRun by appending elements from another TrackRun.
+
         Arguments
         ---------
-        TODO
+        other: octant.core.TrackRun
+            Another TrackRun
+        adapt_conf: bool
+            Merge TrackSettings (.conf attribute) of each of the TrackRuns
+            This is done by retaining matching values and setting other to None
         """
         new_data = pd.concat([self.data, other.data])
         new_track_idx = new_data.index.get_level_values(0).to_series()
@@ -341,7 +374,9 @@ class TrackRun:
                    dist_thresh=300., type_thresh=0.2, lsm=None, coast_rad=50.,
                    vort_thresh0=3e-4, vort_thresh1=4.5e-4):
         """
-        Classify the loaded tracks by different criteria:
+        Classify the loaded tracks.
+
+        Criteria:
          - lifetime
          - proximity to land or domain boundaries
          - distance
@@ -456,10 +491,10 @@ class TrackRun:
                         if (
                             (ot.vo > vort_thresh1).any() or
                             (
-                             ((ot.vo > vort_thresh0).sum() > 1) and
-                             (ot.lifetime_h > time_thresh1)
+                                ((ot.vo > vort_thresh0).sum() > 1) and
+                                (ot.lifetime_h > time_thresh1)
                             )
-                           ):
+                        ):
                             self.data.loc[i, 'cat'] = self.cats['strong']
             else:
                 self.data.loc[i, 'cat'] = self.cats['unknown']
@@ -479,7 +514,7 @@ class TrackRun:
                      thresh_dist=250., time_frac_thresh=0.5,
                      return_dist_matrix=False, beta=100.):
         """
-        Match tracked vortices to a list of vortices from another data source
+        Match tracked vortices to a list of vortices from another data source.
 
         Arguments
         ---------
@@ -547,7 +582,7 @@ class TrackRun:
                         prox_time = ((dist < (thresh_dist * 1e3)).sum()
                                      * _tstep_h)
                         if ((n_match_times * _tstep_h > time_match_thresh)
-                           and prox_time > time_match_thresh):
+                                and prox_time > time_match_thresh):
                             match_pairs.append((idx, other_idx))
                             break
 
@@ -570,9 +605,9 @@ class TrackRun:
                         # new_df1 = (pd.concat([df1, ts]).sort_index()
                         #            .interpolate(method='values')
                         #            .loc[ts.index])[ll]
-                        tmp_df2 = pd.DataFrame(data=dict(lon=np.nan,
-                                                         lat=np.nan,
-                                                         time=df2.time),
+                        tmp_df2 = pd.DataFrame(data={'lon': np.nan,
+                                                     'lat': np.nan,
+                                                     'time': df2.time},
                                                index=df2.index)
                         new_df1 = (pd.concat([df1[[*ll, 'time']], tmp_df2],
                                              ignore_index=True,
@@ -631,9 +666,9 @@ class TrackRun:
 
     def density(self, lon2d, lat2d, by='point', subset='basic',
                 method='radius', r=222.,
-                exclude_first=dict(m=10, d=1), exclude_last=dict(m=4, d=30)):
+                exclude_first={'m': 10, 'd': 1}, exclude_last={'m': 4, 'd': 30}):
         """
-        Calculate different types of cyclone density for a given lon-lat grid:
+        Calculate different types of cyclone density for a given lon-lat grid.
 
         - `point`: all points of all tracks
         - `track`: each track only once for a given cell or circle
@@ -666,10 +701,10 @@ class TrackRun:
         # Prepare coordinates for output
         xlon = xr.IndexVariable(dims='longitude',
                                 data=lon2d[0, :],
-                                attrs=dict(units='degrees_east'))
+                                attrs={'units': 'degrees_east'})
         xlat = xr.IndexVariable(dims='latitude',
                                 data=lat2d[:, 0],
-                                attrs=dict(units='degrees_north'))
+                                attrs={'units': 'degrees_north'})
         # Select subset
         sub_df = self[subset]
 
@@ -686,7 +721,7 @@ class TrackRun:
             # TODO: check cell-method and its units
             # TODO: make this check more flexible
             if ((np.diff(lon2d[0, :]) < 0).any() and
-               (np.diff(lat2d[:, 0]) < 0).any()):
+                    (np.diff(lat2d[:, 0]) < 0).any()):
                 raise GridError('Grid values must be in an ascending order')
             units = '1'
             if by == 'track':
@@ -714,8 +749,7 @@ class TrackRun:
 
         dens = xr.DataArray(cy_func(lon2d_c, lat2d_c, sub_data).base,
                             name=f'{by}_density',
-                            attrs=dict(units=units, subset=subset,
-                                       method=method),
+                            attrs={'units': units, 'subset': subset, 'method': method},
                             dims=('latitude', 'longitude'),
-                            coords=dict(longitude=xlon, latitude=xlat))
+                            coords={'longitude': xlon, 'latitude': xlat})
         return dens

@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
-"""
-Exceptions specific to octant package.
-"""
+"""Exceptions specific to octant package."""
 
 
 class OctantWarning(UserWarning):
     """Base class for warnings in octant package."""
+
     pass
 
 
 class MissingConfWarning(OctantWarning):
-    """Tracking settings file (.conf) is missing in the tracks directory"""
+    """Tracking settings file (.conf) is missing in the tracks directory."""
+
     pass
 
 
 class OctantError(Exception):
     """Base class for errors in octant package."""
+
     pass
 
 
@@ -25,19 +26,23 @@ class NotYetImplementedError(OctantError):
 
     Different meaning to NotImplementedError, which is for abstract methods.
     """
+
     pass
 
 
 class ArgumentError(OctantError):
-    """Raised when argument type is not recognized"""
+    """Raised when argument type is not recognized."""
+
     pass
 
 
 class LoadError(OctantError):
-    """Raised when input files or directories are not found"""
+    """Raised when input files or directories are not found."""
+
     pass
 
 
 class GridError(OctantError):
-    """Raised when lon/lat grids are not correct"""
+    """Raised when lon/lat grids are not correct."""
+
     pass
