@@ -17,6 +17,7 @@ dependencies:
 - sphinx
 - sphinx-gallery
 - sphinx_rtd_theme
+- pytables
 - pytest>=2.4
 - pytest-cov
 - pytest-flake8
