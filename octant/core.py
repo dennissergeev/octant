@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
-"""
-Classes and functions for the analysis of PMCTRACK output
-"""
+"""Classes and functions for the analysis of PMCTRACK output."""
+import warnings
 from functools import partial
 from pathlib import Path
-import warnings
 
 import numpy as np
+
 import pandas as pd
+
 import xarray as xr
 
 from .decor import pbar
-from .utils import (great_circle, mask_tracks,
-                    track_density_rad, track_density_cell,
-                    point_density_rad, point_density_cell,
-                    distance_metric, total_dist)
-from .exceptions import ArgumentError, LoadError, GridError, MissingConfWarning
+from .exceptions import ArgumentError, GridError, LoadError, MissingConfWarning
+from .parts import TrackSettings
+from .utils import (distance_metric, great_circle, mask_tracks,
+                    point_density_cell, point_density_rad, total_dist,
+                    track_density_cell, track_density_rad)
 
 HOUR = np.timedelta64(1, 'h')
 m2km = 1e-3
@@ -180,7 +180,7 @@ class TrackRun:
 
         if not self.data.empty:
             # Define time step
-            for (_, ot) in self.data.groupby('track_idx'):
+            for (_, ot) in self.gb:
                 if ot.shape[0] > 1:
                     self.tstep_h = ot.time.diff().values[-1] / HOUR
                     break
@@ -678,59 +678,3 @@ class TrackRun:
                             dims=('latitude', 'longitude'),
                             coords=dict(longitude=xlon, latitude=xlat))
         return dens
-
-
-class TrackSettings:
-    def __init__(self, fname_path=None):
-        self._fields = []
-        if isinstance(fname_path, Path):
-            with fname_path.open('r') as f:
-                conf_list = [line for line in f.read().split('\n')
-                             if not line.startswith('#') and len(line) > 0]
-            for line in conf_list:
-                if not line.startswith('#'):
-                    k, v = line.split('=')
-                    self._fields.append(k)
-                    try:
-                        self.__dict__.update({k: int(v)})
-                    except ValueError:
-                        try:
-                            self.__dict__.update({k: float(v)})
-                        except ValueError:
-                            v = str(v).strip('"').strip("'")
-                            self.__dict__.update({k: v})
-                # try:
-                #    exec(line, None, self.__dict__)
-                # except SyntaxError:
-                #    k, v = line.split('=')
-                #    self.__dict__.update({k: str(v)})
-                #    self._fields.append(k)
-        self._fields = tuple(self._fields)
-
-    def copy(self):
-        new = self.__class__()
-        new.__dict__ = self.__dict__.copy()
-        return new
-
-    @property
-    def extent(self):
-        extent_keys = ['lon1', 'lon2', 'lat1', 'lat2']
-        extent = []
-        for k in extent_keys:
-            try:
-                extent.append(getattr(self, k, None))
-            except AttributeError:
-                extent.append(None)
-        return extent
-
-    def __len__(self):
-        return len(self._fields)
-
-    def __repr__(self):
-        return ('Settings used for '
-                f'PMC tracking algorithm ({len(self)})')
-
-    def __str__(self):
-        summary = '\n'.join([f'{k} = {getattr(self, k, None)}'
-                             for k in self._fields])
-        return f'Settings used for PMC tracking algorithm:\n\n{summary}'
