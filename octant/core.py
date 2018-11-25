@@ -188,7 +188,8 @@ class TrackRun:
         self.dirname = dirname
         self.conf = None
         mux = pd.MultiIndex.from_arrays([[], []], names=self.mux_names)
-        self.data = OctantTrack(index=mux, columns=columns)
+        self.columns = columns
+        self.data = OctantTrack(index=mux, columns=self.columns)
         self.filelist = []
         self.sources = []
         self.is_categorised = False
@@ -196,7 +197,7 @@ class TrackRun:
         if isinstance(self.dirname, Path):
             # Read all files and store in self.all
             # as a list of `pandas.DataFrame`s
-            self.load_data(self.dirname, columns=columns)
+            self.load_data(self.dirname, columns=self.columns)
         elif self.dirname is not None:
             raise LoadError('dirname should be Path-like object')
 
@@ -213,7 +214,9 @@ class TrackRun:
 
     def __repr__(self):  # noqa
         s = '\n'.join(self.sources)
-        return f'TrackRun({s}, {(len(self))})'
+        if s:
+            s += ', '
+        return f'TrackRun({s}{(len(self))})'
 
     def __add__(self, other):
         """Combine two TrackRun objects together."""
@@ -278,8 +281,9 @@ class TrackRun:
                 warnings.warn(msg, MissingConfWarning)
 
         # Load the tracks
+        self.columns = columns
         load_kw = {'delimiter': r'\s+',  # noqa
-                   'names': columns,
+                   'names': self.columns,
                    'parse_dates': ['time']}
         _data = []
         for fname in self.filelist:
@@ -345,7 +349,7 @@ class TrackRun:
             Merge TrackSettings (.conf attribute) of each of the TrackRuns
             This is done by retaining matching values and setting other to None
         """
-        new_data = pd.concat([self.data, other.data])
+        new_data = pd.concat([self.data, other.data], sort=False)
         new_track_idx = new_data.index.get_level_values(0).to_series()
         new_track_idx = new_track_idx.ne(new_track_idx.shift()).cumsum() - 1
 
@@ -367,6 +371,51 @@ class TrackRun:
         else:
             if getattr(other, 'tstep_h', None) is not None:
                 assert self.tstep_h == other.tstep_h
+
+    def time_slice(self, start=None, end=None):
+        """"
+        Subset TrackRun by time using pandas boolean indexing
+
+        Arguments
+        ---------
+        start: str or datetime.datetime, optional
+            Start of the slice (inclusive)
+        stop: str or datetime.datetime, optional
+            End of the slice (inclusive)
+
+        Returns
+        -------
+        octant.core.TrackRun
+
+        Examples
+        --------
+        >>> from octant.core import TrackRun
+        >>> tr = TrackRun(/path/to/directory)
+        >>> sub_tr = tr.time_slice('2018-09-04', '2018-11-25')
+        """
+        if (start is None) and (end is None):
+            return self
+        else:
+            crit = True
+            if start is not None:
+                crit &= (self.data.time >= start)
+            if end is not None:
+                crit &= (self.data.time <= end)
+            # Create a copy of this TrackRun
+            result = self.__class__()
+            result.extend(self)
+            # Replace data with TrackRun.data sliced by start or end
+            result.data = result.data[crit]
+            # Clear up sources to avoid confusion
+            result.sources = []
+            result.dirname = None
+            result.filelist = []
+            try:
+                result.conf.dt_start = None
+                result.conf.dt_end = None
+            except AttributeError:
+                pass
+            return result
 
     def categorise(self, filt_by_time=True, filt_by_dist=True,
                    filt_by_vort=False, filt_by_domain_bounds=True,
