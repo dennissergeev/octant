@@ -28,3 +28,30 @@ if not DISABLE_TQDM:
         pbar = partial(tqdm, leave=False, disable=DISABLE_TQDM)  # noqa
     except ImportError:
         pass
+
+
+def trackrun_repr(trackrun, short=False):
+    summary = [u'<octant.core.{}>'.format(type(trackrun).__name__)]
+    summary.append(u'[{} tracks]'.format(len(trackrun)))
+    if short:
+        return ' '.join(summary)
+
+    if len(trackrun) > 0:
+        summary.append(u'\nData columns:')
+        summary.append(u' | '.join(trackrun.columns))
+
+    if trackrun.is_categorised:
+        summary.append(u'\nCategories:')
+        summary.append(u'         {:>8d} in total'.format(trackrun.size()))
+        for cat_label in trackrun.cats.keys():
+            if cat_label != 'unknown':
+                summary.append(u'of which {:>8d} are {}'.format(trackrun.size(cat_label),
+                                                                cat_label))
+
+    if trackrun.sources:
+        summary.append(u'\nSources:')
+        summary.append(u'\n'.join(trackrun.sources))
+
+    # if trackrun.conf is not None:
+    #     summary.append(u'\nTracking settings:')
+    return '\n'.join(summary)

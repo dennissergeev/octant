@@ -10,7 +10,7 @@ import pandas as pd
 
 import xarray as xr
 
-from .decor import pbar
+from .decor import pbar, trackrun_repr
 from .exceptions import ArgumentError, GridError, LoadError, MissingConfWarning
 from .parts import TrackSettings
 from .utils import (distance_metric, great_circle, mask_tracks,
@@ -213,10 +213,10 @@ class TrackRun:
         return self.data.index.get_level_values(0).to_series().nunique()
 
     def __repr__(self):  # noqa
-        s = '\n'.join(self.sources)
-        if s:
-            s += ', '
-        return f'TrackRun({s}{(len(self))})'
+        return trackrun_repr(self, short=True)
+
+    def __str__(self):  # noqa
+        return trackrun_repr(self)
 
     def __add__(self, other):
         """Combine two TrackRun objects together."""
