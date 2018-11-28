@@ -66,8 +66,70 @@ class ReprTrackRun:
     def __init__(self, trackrun):
         self.tr_id = id(trackrun)
         self.trackrun = trackrun
-        self.n_tracks = len(self.trackrun)
-        self.name = self.trackrun.__class__.__name__
+        self.name = f'{self.trackrun.__module__}.{self.trackrun.__class__.__name__}'
+        self.n_tracks = len(trackrun)
+        self.data_cols = tuple(trackrun.data.columns)
+        self.ncol = len(self.data_cols)
+
+    def _make_header(self):
+        top_cell = f'<th class="octant octant-word-cell" colspan="{self.ncol+1}">{self.name}</th>'
+        cells = ['<tr class="octant">', top_cell, '</tr>']
+        return '\n'.join(cells)
+
+    def _make_content(self):
+        cells = []
+        if self.trackrun.is_categorised:
+            cells.append('<tr class="octant">')
+            cells.append(f'<td rowspan="{len(self.trackrun.cats)+1}">Categories</td>')
+            cells.append('<tr class="octant">')
+            cells.append('<td class="octant octant-word-cell"></td>'
+                         f'<td colspan="{self.ncol-2}">{self.n_tracks}</td><td>in total</td>')
+            cells.append('</tr>')
+            cells.append('</tr>')
+            for cat_label in self.trackrun.cats.keys():
+                if cat_label != 'unknown':
+                    cells.append('<tr class="octant">')
+                    cells.append('<td class="octant octant-word-cell">of which</td>'
+                                 '<td class="octant octant-word-cell"'
+                                 f'colspan="{self.ncol-2}">{self.trackrun.size(cat_label)}</td>'
+                                 f'<td class="octant octant-word-cell">{cat_label}</td>')
+                    cells.append('</tr>')
+        else:
+            # Total number of tracks
+            cells.append('<tr class="octant">')
+            cells.append(
+                '<td class="octant octant-word-cell">Number of tracks</td>')
+            cells.append(
+                f'<td class="octant octant-word-cell" colspan="{self.ncol}">{self.n_tracks}</td>')
+            cells.append('</tr>')
+
+        # List of columns of the .data container
+        cells.append('<tr class="octant">')
+        cells.append(
+            '<td class="octant octant-word-cell">Data columns</td>')
+        for col in self.data_cols:
+            cells.append(f'<td class="octant octant-word-cell">{col}</td>')
+        cells.append('</tr>')
+
+        if self.trackrun.sources:
+            # List source directories
+            cells.append('<tr class="octant">')
+            cells.append(f'<td class="octant octant-word-cell"\
+                rowspan="{len(self.trackrun.sources)+1}">Sources</td>')
+            for src in self.trackrun.sources:
+                cells.append('<tr class="octant">')
+                cells.append(f'<td class="octant octant-word-cell"\
+                             colspan="{self.ncol}">{src}</td>')
+                cells.append('</tr>')
+            cells.append('</tr>')
+        return '\n'.join(cells)
+
+    def html_repr(self):
+        header = self._make_header()
+        content = self._make_content()
+        return self._template.format(id=self.tr_id,
+                                     header=header,
+                                     content=content)
 
     def str_repr(self, short=False):
         summary = [u'<octant.core.{}>'.format(type(self.trackrun).__name__)]
@@ -93,26 +155,3 @@ class ReprTrackRun:
 
         # if self.trackrun.conf is not None:
         #     summary.append(u'\nTracking settings:')
-        return '\n'.join(summary)
-
-    def _make_header(self):
-        # TODO
-        tlc_template = \
-            '<th class="octant octant-word-cell">{self.name} ({self.n_tracks})</th>'
-        top_left_cell = tlc_template.format(self=self)
-        cells = ['<tr class="octant">', top_left_cell]
-        cells.append(
-            '<th class="octant octant-word-cell">{}</th>'.format('Data columns'))
-        return '\n'.join(cells)
-
-    def _make_content(self):
-        cells = ['<tr class="octant">']
-        # TODO
-        return '\n'.join(cells)
-
-    def html_repr(self):
-        header = self._make_header()
-        content = self._make_content()
-        return self._template.format(id=self.tr_id,
-                                     header=header,
-                                     content=content)
