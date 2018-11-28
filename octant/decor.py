@@ -155,3 +155,4 @@ class ReprTrackRun:
 
         # if self.trackrun.conf is not None:
         #     summary.append(u'\nTracking settings:')
+        return '\n'.join(summary)
