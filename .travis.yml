@@ -32,7 +32,7 @@ script:
   # installed package rather than the source:
   - mkdir ../test_directory
   - cd ../test_directory
-  - pytest ../octant --cov=octant --cov-config .coveragerc --cov-report term-missing -v
+  - pytest ../octant --flake8 --cov=octant --cov-config .coveragerc --cov-report term-missing -v
 
 notifications:
     email: false
