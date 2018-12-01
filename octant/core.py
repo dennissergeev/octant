@@ -10,7 +10,7 @@ import pandas as pd
 
 import xarray as xr
 
-from .decor import pbar, ReprTrackRun
+from .decor import ReprTrackRun, pbar
 from .exceptions import ArgumentError, GridError, LoadError, MissingConfWarning
 from .parts import TrackSettings
 from .utils import (distance_metric, great_circle, mask_tracks,
@@ -376,11 +376,12 @@ class TrackRun:
             self.tstep_h = getattr(other, 'tstep_h', None)
         else:
             if getattr(other, 'tstep_h', None) is not None:
-                assert self.tstep_h == other.tstep_h
+                _msg = 'Extending by a TrackRun with different timestep is not allowed'
+                assert self.tstep_h == other.tstep_h, _msg
 
     def time_slice(self, start=None, end=None):
-        """"
-        Subset TrackRun by time using pandas boolean indexing
+        """
+        Subset TrackRun by time using pandas boolean indexing.
 
         Arguments
         ---------

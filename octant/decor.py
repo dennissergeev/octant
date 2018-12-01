@@ -39,6 +39,7 @@ class ReprTrackRun:
     * ``html_repr``: represents TrackRun as an HTML object, available in Jupyter notebooks.
         Specifically, this is presented as an HTML table.
     """
+
     _template = """
 <style>
   table.octant {{
@@ -64,6 +65,14 @@ class ReprTrackRun:
         """
 
     def __init__(self, trackrun):
+        """
+        Initialise ReprTrackRun.
+
+        Arguments
+        ---------
+        trackrun: octant.core.TrackRun
+            TrackRun instance
+        """
         self.tr_id = id(trackrun)
         self.trackrun = trackrun
         self.name = f'{self.trackrun.__module__}.{self.trackrun.__class__.__name__}'
@@ -125,6 +134,7 @@ class ReprTrackRun:
         return '\n'.join(cells)
 
     def html_repr(self):
+        """HTML representation of TrackRun used in Jupyter Notebooks."""
         header = self._make_header()
         content = self._make_content()
         return self._template.format(id=self.tr_id,
@@ -132,6 +142,7 @@ class ReprTrackRun:
                                      content=content)
 
     def str_repr(self, short=False):
+        """Represent TrackRun as string."""
         summary = [u'<octant.core.{}>'.format(type(self.trackrun).__name__)]
         summary.append(u'[{} tracks]'.format(len(self.trackrun)))
         if short:
