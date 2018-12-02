@@ -12,29 +12,12 @@ import xarray as xr
 
 from .decor import ReprTrackRun, pbar
 from .exceptions import ArgumentError, GridError, LoadError, MissingConfWarning
+from .misc import _exclude_by_first_day, _exclude_by_last_day
+from .params import ARCH_KEY, CATS, COLUMNS, HOUR, M2KM
 from .parts import TrackSettings
 from .utils import (distance_metric, great_circle, mask_tracks,
                     point_density_cell, point_density_rad, total_dist,
                     track_density_cell, track_density_rad)
-
-HOUR = np.timedelta64(1, 'h')
-m2km = 1e-3
-
-CATS = {'unknown': 0, 'basic': 1, 'moderate': 2, 'strong': 3}
-COLUMNS = ['lon', 'lat', 'vo', 'time', 'area', 'vortex_type']  # , 'cat']
-ARCH_KEY = 'trackrun'
-
-
-def exclude_by_first_day(df, m, d):
-    """Check if OctantTrack starts on certain day and month."""
-    return not ((df.time.dt.month[0] == m).any()
-                and (df.time.dt.day[0] == d).any())
-
-
-def exclude_by_last_day(df, m, d):
-    """Check if OctantTrack ends on certain day and month."""
-    return not ((df.time.dt.month[-1] == m).any()
-                and (df.time.dt.day[-1] == d).any())
 
 
 class OctantSeries(pd.Series):
@@ -111,12 +94,12 @@ class OctantTrack(pd.DataFrame):
     def gen_lys_dist_km(self):
         """Distance between genesis and lysis of the cyclone track in km."""
         return great_circle(self.lonlat[0, 0], self.lonlat[-1, 0],
-                            self.lonlat[0, 1], self.lonlat[-1, 1]) * m2km
+                            self.lonlat[0, 1], self.lonlat[-1, 1]) * M2KM
 
     @property
     def total_dist_km(self):
         """Total track distance in km."""
-        return total_dist(self.lonlat_c) * m2km
+        return total_dist(self.lonlat_c) * M2KM
 
     @property
     def average_speed(self):
@@ -165,7 +148,7 @@ class TrackRun:
     ----------
     filelist: list
         list of "vortrack" files
-    conf: octant.core.TrackSettings
+    conf: octant.parts.TrackSettings
         Configuration used for tracking
 
     """
@@ -750,8 +733,8 @@ class TrackRun:
             Used when method='radius'
         Returns
         -------
-        dens: xarray.DataArray of shape (M, N)
-            Array of track density with useful metadata in attrs
+        dens: xarray.DataArray
+            Array of track density of shape (M, N) with useful metadata in attrs
         """
         # Prepare coordinates for cython
         lon2d_c = lon2d.astype('double', order='C')
@@ -795,14 +778,14 @@ class TrackRun:
         elif by == 'genesis':
             sub_data = (sub_df
                         .groupby('track_idx')
-                        .filter(exclude_by_first_day, **exclude_first)
+                        .filter(_exclude_by_first_day, **exclude_first)
                         .xs(0, level='row_idx')).lonlat_c
         elif by == 'lysis':
             sub_data = (self[subset]
                         .groupby('track_idx')
                         .tail(1)
                         .groupby('track_idx')
-                        .filter(exclude_by_last_day, **exclude_last)
+                        .filter(_exclude_by_last_day, **exclude_last)
                         ).lonlat_c
 
         dens = xr.DataArray(cy_func(lon2d_c, lat2d_c, sub_data).base,

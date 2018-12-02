@@ -12,6 +12,18 @@ SUBSETS = [i for i in CATS.keys() if i != 'unknown']
 DENSITY_TYPES = ['point', 'track', 'genesis', 'lysis']
 
 
+def _exclude_by_first_day(df, m, d):
+    """Check if OctantTrack starts on certain day and month."""
+    return not ((df.time.dt.month[0] == m).any()
+                and (df.time.dt.day[0] == d).any())
+
+
+def _exclude_by_last_day(df, m, d):
+    """Check if OctantTrack ends on certain day and month."""
+    return not ((df.time.dt.month[-1] == m).any()
+                and (df.time.dt.day[-1] == d).any())
+
+
 def calc_all_dens(tr_obj, lon2d, lat2d, method='radius', r=111.3 * 2):
     """
     Calculate all types of cyclone density for all SUBSETS of TrackRun.
