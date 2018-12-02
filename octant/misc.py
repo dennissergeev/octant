@@ -4,8 +4,8 @@ import numpy as np
 
 import xarray as xr
 
-from .core import CATS
 from .decor import pbar
+from .params import CATS
 
 
 SUBSETS = [i for i in CATS.keys() if i != 'unknown']
