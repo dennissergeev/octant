@@ -179,7 +179,7 @@ class TrackRun:
 
         Arguments
         ---------
-        dirname: pathlib.Path or path.Path, optional
+        dirname: pathlib.Path, optional
             Path to the directory with tracking output
             If present, load the data during on init
         columns: sequence of str, optional
@@ -253,11 +253,11 @@ class TrackRun:
 
         Arguments
         ---------
-        dirname: pathlib.Path or path.Path
+        dirname: pathlib.Path
             Path to the directory with tracking output
         columns: sequence of str, optional
             List of column names. Should contain 'time' to parse datetimes.
-        conf_file: pathlib.Path or path.Path, optional
+        conf_file: pathlib.Path, optional
             Path to the configuration file. If omitted, an attempt is
             made to find a .conf file in the `dirname` directory
         primary_only: bool, optional

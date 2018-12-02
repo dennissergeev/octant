@@ -17,6 +17,8 @@ Objective Cyclone Tracking ANalysis Tools
   - pandas
   - xarray
 
+Plotting examples also require the `cartopy` package
+
 ### With conda
 ```bash
 conda install -c dennissergeev octant
