@@ -36,8 +36,8 @@ def plot(df, ax=None, transform=DFLT_TRANSFORM, **kwargs):
     if ax is None:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection=DFLT_TRANSFORM)
-        extent = [df.lon.min()-5, df.lon.max()+5,
-                  df.lat.min()-2, df.lat.max()+2]
+        extent = [df.lon.min() - 5, df.lon.max() + 5,
+                  df.lat.min() - 2, df.lat.max() + 2]
         ax.set_extent(extent, crs=transform)
         gl = ax.gridlines(draw_labels=True)
         gl.xlabels_top = gl.ylabels_right = False

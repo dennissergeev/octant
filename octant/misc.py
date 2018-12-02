@@ -61,7 +61,7 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by='M'):
                           leave=False, desc='tracks'):
             track_months = df.time.dt.month.unique()
             for m in track_months:
-                counter[m-1] += 1
+                counter[m - 1] += 1
     if by.upper() == 'W':
         # winter
         counter = np.zeros(n_winters, dtype=int)
