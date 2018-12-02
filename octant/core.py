@@ -165,7 +165,7 @@ class TrackRun:
     ----------
     filelist: list
         list of "vortrack" files
-    conf: TrackSettings
+    conf: octant.core.TrackSettings
         Configuration used for tracking
 
     """
