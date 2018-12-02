@@ -30,8 +30,8 @@ install:
 script:
   # Create an isolated test directory to make sure we test against the
   # installed package rather than the source:
-  - mkdir ../test_directory
-  - cd ../test_directory
+  - mkdir test_directory
+  - cd test_directory
   - pytest ../octant -c ../setup.cfg --flake8 --cov=octant --cov-config .coveragerc --cov-report term-missing -v
 
 notifications:
