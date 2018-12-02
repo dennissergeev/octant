@@ -53,8 +53,11 @@ class OctantTrack(pd.DataFrame):
     @classmethod
     def from_mux_df(cls, df):
         """Create OctantTrack from a multi-index pandas.DataFrame."""
-        return cls.from_records(df.to_records(index=True),
-                                index=df.index.names)
+        if df.shape[0] > 0:
+            return cls.from_records(df.to_records(index=True),
+                                    index=df.index.names)
+        else:
+            return cls(columns=df.columns, index=df.index)
 
     @property
     def coord_view(self):
@@ -304,7 +307,10 @@ class TrackRun:
             df = store[ARCH_KEY]
             metadata = store.get_storer(ARCH_KEY).attrs.metadata
         tr = cls()
-        tr.data = OctantTrack.from_mux_df(df.set_index(cls.mux_names))
+        if df.shape[0] > 0:
+            tr.data = OctantTrack.from_mux_df(df.set_index(cls.mux_names))
+        else:
+            tr.data = OctantTrack.from_mux_df(df)
         metadata['conf'] = TrackSettings.from_dict(metadata['conf'])
         tr.__dict__.update(metadata)
         return tr
@@ -319,11 +325,14 @@ class TrackRun:
             File path to HDF5 file
         """
         with pd.HDFStore(filename, mode='w') as store:
-            df = pd.DataFrame.from_records(self.data.to_records(index=True))
+            if self.size() > 0:
+                df = pd.DataFrame.from_records(self.data.to_records(index=True))
+            else:
+                df = pd.DataFrame(columns=self.columns, index=self.data.index)
             store.put(ARCH_KEY, df)
             metadata = {k: v for k, v in self.__dict__.items()
                         if k not in ['data', 'filelist', 'conf']}
-            metadata['conf'] = self.conf.to_dict()
+            metadata['conf'] = getattr(self.conf, 'to_dict', lambda: {})()
             store.get_storer(ARCH_KEY).attrs.metadata = metadata
 
     def extend(self, other, adapt_conf=True):
