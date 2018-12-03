@@ -3,10 +3,6 @@ sudo: false
 notifications:
   email: false
 
-branches:
-  only:
-  - master
-
 matrix:
   fast_finish: true
   include:
@@ -15,7 +11,6 @@ matrix:
   - env: CONDA_ENV=docs
 
 before_install:
-  # - sudo apt-get update
   - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
@@ -34,12 +29,12 @@ install:
   - pip install --no-deps -e .
 
 script:
-  # Create an isolated test directory to make sure we test against the
-  # installed package rather than the source:
   - if [[ "$CONDA_ENV" == "docs" ]]; then
       conda install -c conda-forge sphinx sphinx_rtd_theme numpydoc;
       sphinx-build -n -b html -d docs/build/doctrees docs/source docs/build/html;
     else
+      # Create an isolated test directory to make sure we test against the
+      # installed package rather than the source:
       # mkdir test_directory && cd test_directory
-      pytest octant -c setup.cfg --flake8 --cov=octant --cov-config .coveragerc --cov-report term-missing -v
+      pytest octant -c setup.cfg --flake8 --cov=octant --cov-config .coveragerc --cov-report term-missing -v;
     fi;
