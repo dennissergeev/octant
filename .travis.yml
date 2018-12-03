@@ -1,4 +1,4 @@
-language: python
+language: minimal
 sudo: false
 notifications:
   email: false
@@ -29,12 +29,9 @@ install:
   - pip install --no-deps -e .
 
 script:
+  - which python
   - if [[ "$CONDA_ENV" == "docs" ]]; then
-      conda install -c conda-forge sphinx sphinx_rtd_theme numpydoc;
       sphinx-build -n -b html -d docs/build/doctrees docs/source docs/build/html;
     else
-      # Create an isolated test directory to make sure we test against the
-      # installed package rather than the source:
-      # mkdir test_directory && cd test_directory
       pytest octant -c setup.cfg --flake8 --cov=octant --cov-config .coveragerc --cov-report term-missing -v;
     fi;
