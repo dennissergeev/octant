@@ -1,7 +1,7 @@
 language: python
 sudo: false
 notifications:
-    email: false
+  email: false
 
 branches:
   only:
