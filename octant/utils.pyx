@@ -1,7 +1,8 @@
+# cython: language_level=3, boundscheck=False, wraparound=False
 """
-Part of the octant package
+Part of the octant package.
 
-Optimized functions for working with cyclone tracks
+Optimized functions for working with cyclone tracks.
 """
 cimport cython
 import numpy as np
@@ -65,8 +66,6 @@ cpdef double great_circle(double lon1,
     return _great_circle(lon1, lon2, lat1, lat2, r=r)
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)  # Deactivate negative indexing
 cpdef double total_dist(double[:, ::1] lonlat):
     """
     Calculate the total distance given an array of longitudes and latitudes
@@ -92,8 +91,6 @@ cpdef double total_dist(double[:, ::1] lonlat):
     return dist
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)  # Deactivate negative indexing
 cpdef double[:, ::1] point_density_cell(double[:, ::1] lon2d,
                                         double[:, ::1] lat2d,
                                         double[:, ::1] lonlat):
@@ -117,8 +114,6 @@ cpdef double[:, ::1] point_density_cell(double[:, ::1] lon2d,
     return count
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)  # Deactivate negative indexing
 cpdef double[:, ::1] point_density_rad(double[:, ::1] lon2d,
                                        double[:, ::1] lat2d,
                                        double[:, ::1] lonlat,
@@ -140,8 +135,6 @@ cpdef double[:, ::1] point_density_rad(double[:, ::1] lon2d,
     return count
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)  # Deactivate negative indexing
 cpdef double[:, ::1] track_density_cell(double[:, ::1] lon2d,
                                         double[:, ::1] lat2d,
                                         double[:, ::1] id_lon_lat):
@@ -169,8 +162,6 @@ cpdef double[:, ::1] track_density_cell(double[:, ::1] lon2d,
     return count
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)  # Deactivate negative indexing
 cpdef double[:, ::1] track_density_rad(double[:, ::1] lon2d,
                                        double[:, ::1] lat2d,
                                        double[:, ::1] id_lon_lat,
@@ -197,8 +188,6 @@ cpdef double[:, ::1] track_density_rad(double[:, ::1] lon2d,
     return count
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)  # Deactivate negative indexing
 cdef double _masking_loop_func(double[:, ::1] mask,
                                double[:, ::1] lon2d,
                                double[:, ::1] lat2d,
@@ -221,8 +210,6 @@ cdef double _masking_loop_func(double[:, ::1] mask,
     return 0.
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)  # Deactivate negative indexing
 cpdef double mask_tracks(double[:, ::1] mask,
                          double[:, ::1] lon2d,
                          double[:, ::1] lat2d,
@@ -262,8 +249,6 @@ cpdef double mask_tracks(double[:, ::1] mask,
     return points_near_coast / pmax
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.
 cdef double _traj_variance(double[:] x1,
                            double[:] y1,
                            double[:] t1,
@@ -336,8 +321,8 @@ cdef double _traj_variance(double[:] x1,
     return variance_sum / (A1 * A2)
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)  # Deactivate negative indexing
+# @cython.boundscheck(False)  # Deactivate bounds checking
+# @cython.wraparound(False)  # Deactivate negative indexing
 @cython.cdivision(True)  # Do not check for ZeroDivision errors 
 cpdef double distance_metric(double[:] x1,
                              double[:] y1,
