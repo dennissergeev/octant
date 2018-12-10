@@ -24,7 +24,8 @@ def get_readme():
         return f.read()
 
 
-CMDCLASS = versioneer.get_cmdclass({'build_ext': Cython.Build.build_ext})
+CMDCLASS = versioneer.get_cmdclass()
+CMDCLASS.update({'build_ext': Cython.Build.build_ext})
 
 
 setup(
