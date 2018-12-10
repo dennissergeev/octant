@@ -7,7 +7,7 @@ source:
 
 requirements:
   build:
-    - python
+    - python {{ python }}
     - setuptools
     - cython
     - numpy
