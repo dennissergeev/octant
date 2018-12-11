@@ -6,5 +6,7 @@ mkdir ~/conda-bld
 conda config --set anaconda_upload no
 export CONDA_BLD_PATH=~/conda-bld
 export VERSION=`python -c 'import octant; print(octant.__version__)'`
-conda build .
-anaconda -t $CONDA_UPLOAD_TOKEN upload -u $USER -l nightly --force $CONDA_BLD_PATH/$OS/$PKG_NAME-$VERSION.tar.bz2
+conda build --no-test .
+PKG_FULL_NAME=`conda build --output .`
+# echo 'PKG_FULL_NAME='$PKG_FULL_NAME
+anaconda --token $CONDA_UPLOAD_TOKEN upload -u $USER -l nightly --force $PKG_FULL_NAME
