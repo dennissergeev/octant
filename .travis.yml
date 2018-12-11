@@ -16,6 +16,7 @@ before_install:
   - export PATH="$HOME/miniconda/bin:$PATH"
   - hash -r
   - conda config --set always_yes yes --set changeps1 no --set show_channel_urls true
+  - conda config --add channels conda-forge
   - conda update -q conda
   - conda info -a
 
@@ -29,9 +30,15 @@ install:
   - pip install --no-deps -e .
 
 script:
-  - which python
   - if [[ "$CONDA_ENV" == "docs" ]]; then
       sphinx-build -n -b html -d docs/build/doctrees docs/source docs/build/html;
     else
       pytest octant -c setup.cfg --flake8 --cov=octant --cov-config .coveragerc --cov-report term-missing -v;
+    fi;
+
+after_success:
+  - if [[ "$CONDA_ENV" != "docs" ]]; then
+      conda install conda-build anaconda-client
+      conda list
+      bash ci/conda_upload.sh
     fi;

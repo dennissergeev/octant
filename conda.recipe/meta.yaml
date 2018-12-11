@@ -1,13 +1,13 @@
 package:
   name: octant
-  version: "0.0.16"
+  version: {{ environ['VERSION'] }}
 
 source:
   git_url: https://github.com/dennissergeev/octant.git
 
 requirements:
   build:
-    - python {{ python }}
+    - python
     - setuptools
     - cython
     - numpy
@@ -16,6 +16,11 @@ requirements:
     - numpy
     - pandas
     - xarray
+
+build:
+  script_env:
+   - VERSION
+   - CONDA_BLD_PATH
 
 test:
   imports:
