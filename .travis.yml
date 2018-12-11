@@ -40,5 +40,5 @@ after_success:
   - if [[ "$CONDA_ENV" != "docs" ]]; then
       conda install conda-build anaconda-client;
       conda list;
-      bash ci/conda_upload.sh;
+      bash conda.recipe/conda_upload.sh;
     fi;
