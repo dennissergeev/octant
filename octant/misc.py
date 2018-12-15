@@ -24,18 +24,21 @@ def _exclude_by_last_day(df, m, d):
                 and (df.time.dt.day[-1] == d).any())
 
 
-def calc_all_dens(tr_obj, lon2d, lat2d, method='radius', r=111.3 * 2):
+def calc_all_dens(tr_obj, lon2d, lat2d, subsets=SUBSETS, **kwargs):
     """
     Calculate all types of cyclone density for all SUBSETS of TrackRun.
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     lon2d: numpy.ndarray
         2D array of longitudes
     lat2d: numpy.ndarray
         2D array of latitudes
-    method: str
-        Method used in octant.core.TrackRun.density()
+    subsets: list
+        Subsets of `TrackRun` to process
+    **kwargs: dict
+        Keyword arguments passed to `octant.core.TrackRun.density()`.
+        Should not include `subset` and `by` keywords, because they are passed separately.
 
     Returns
     -------
@@ -47,11 +50,10 @@ def calc_all_dens(tr_obj, lon2d, lat2d, method='radius', r=111.3 * 2):
     dens_dim = xr.DataArray(name='dens_type', dims=('dens_type'),
                             data=DENSITY_TYPES)
     list1 = []
-    for subset in pbar(SUBSETS, leave=False, desc='subsets'):
+    for subset in pbar(subsets, leave=False, desc='subsets'):
         list2 = []
         for by in pbar(DENSITY_TYPES, leave=False, desc='density_types'):
-            list2.append(tr_obj.density(lon2d, lat2d, by=by,
-                         method=method, r=r, subset=subset))
+            list2.append(tr_obj.density(lon2d, lat2d, by=by, subset=subset, **kwargs))
         list1.append(xr.concat(list2, dim=dens_dim))
     da = xr.concat(list1, dim=subset_dim)
     return da.rename('density')
@@ -61,10 +63,19 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by='M'):
     """
     Take `octant.TrackRun` and count cyclone tracks by month or by winter.
 
+    Parameters
+    ----------
+    tr_obj: octant.core.TrackRun
+        TrackRun object
+    start_year: int
+        Start year
+    n_winters: int
+        Number of years
+
     Returns
     -------
-    counter: numpy array of shape (N,)
-        Binned counts
+    counter: numpy.ndarray
+        Binned counts of shape (N,)
 
     """
     if by.upper() == 'M':

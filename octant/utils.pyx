@@ -45,8 +45,8 @@ cpdef double great_circle(double lon1,
     """
     Calculate great circle distance between two points on a sphere
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     lon1: double
         Longitude of the first point
     lat1: double
@@ -70,8 +70,8 @@ cpdef double total_dist(double[:, ::1] lonlat):
     """
     Calculate the total distance given an array of longitudes and latitudes
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     lonlat: double, shape(N, 2)
         Array of longitudes and latitudes
 
@@ -219,8 +219,8 @@ cpdef double mask_tracks(double[:, ::1] mask,
     Count how many points of a cyclone track should be masked by their
     proximity to masked values in a 2D array.
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     mask: double, shape(M, N)
         Mask array with 1 for masked values
     lon2d: double, shape(M, N)
@@ -260,8 +260,8 @@ cdef double _traj_variance(double[:] x1,
     """
     Calculate cyclone track variance (eq. (3) in Blender and Schubert (2000))
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     x1: double, shape(N, )
         Array of longitudes of track 1
     y1: double, shape(N, )
@@ -335,8 +335,8 @@ cpdef double distance_metric(double[:] x1,
     """
     Calculate the distance metric (eq. (4) in Blender and Schubert (2000))
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     x1: double, shape(N, )
         Array of longitudes of track 1
     y1: double, shape(N, )

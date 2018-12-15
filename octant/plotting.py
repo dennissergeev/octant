@@ -16,8 +16,8 @@ def plot(df, ax=None, transform=DFLT_TRANSFORM, **kwargs):
 
     Closed circle shows the beginning, open circle - the end of the track.
 
-    Arguments
-    ---------
+    Parameters
+    ----------
     df: DataFrame-like
         Instance of cyclone track to plot. Longitudes and latitudes are taken
         from 'lon' and 'lat' columns.

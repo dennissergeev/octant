@@ -68,8 +68,8 @@ class ReprTrackRun:
         """
         Initialise ReprTrackRun.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         trackrun: octant.core.TrackRun
             TrackRun instance
         """

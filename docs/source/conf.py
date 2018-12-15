@@ -16,6 +16,8 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import octant
+
 
 # -- Project information -----------------------------------------------------
 
@@ -24,9 +26,9 @@ copyright = '2018, the octant developers'
 author = 'The octant developers'
 
 # The short X.Y version
-version = ''
+version = octant.__version__
 # The full version, including alpha/beta/rc tags
-release = '0.0.15'
+release = version
 
 
 # -- General configuration ---------------------------------------------------
@@ -80,9 +82,13 @@ pygments_style = None
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
-import sphinx_rtd_theme  # noqa
-html_theme = 'sphinx_rtd_theme'
+
+html_theme_path = ['_themes']
+
+# import sphinx_rtd_theme  # noqa
+# html_theme = 'sphinx_rtd_theme'
+# html_theme = 'sphinx13'
+html_theme = 'sphinxdoc'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -184,6 +190,15 @@ epub_exclude_files = ['search.html']
 # -- Extension configuration -------------------------------------------------
 
 # -- Options for intersphinx extension ---------------------------------------
+# Options for intersphinx.
+intersphinx_mapping = {
+    'iris': ('https://scitools.org.uk/iris/docs/latest', None),
+    'numpy': ('https://docs.scipy.org/doc/numpy', None),
+    'pandas': ('http://pandas.pydata.org/', None),
+    'python': ('https://docs.python.org/3/', None),
+    'xarray': ('https://xarray.pydata.org/en/stable', None),
+}
 
-# Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+# -- Autodoc settings -- #
+autoclass_content = 'class'
+autodoc_member_order = 'bysource'

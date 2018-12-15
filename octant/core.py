@@ -125,8 +125,8 @@ class OctantTrack(pd.DataFrame):
 
         Closed circle shows the beginning, open circle - the end of the track.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         ax: matplotlib axes object, optional
             Axes in which to plot the track
             If not given, a new figure with cartopy geoaxes is created
@@ -156,15 +156,15 @@ class TrackRun:
 
     """
 
-    mux_names = ['track_idx', 'row_idx']
-    cats = CATS
+    _mux_names = ['track_idx', 'row_idx']
+    _cats = CATS
 
     def __init__(self, dirname=None, columns=COLUMNS):
         """
         Initialise octant.core.TrackRun.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         dirname: pathlib.Path, optional
             Path to the directory with tracking output
             If present, load the data during on init
@@ -173,7 +173,7 @@ class TrackRun:
         """
         self.dirname = dirname
         self.conf = None
-        mux = pd.MultiIndex.from_arrays([[], []], names=self.mux_names)
+        mux = pd.MultiIndex.from_arrays([[], []], names=self._mux_names)
         self.columns = columns
         self.data = OctantTrack(index=mux, columns=self.columns)
         self.filelist = []
@@ -189,7 +189,7 @@ class TrackRun:
 
         if not self.data.empty:
             # Define time step
-            for (_, ot) in self.gb:
+            for (_, ot) in self._gb:
                 if ot.shape[0] > 1:
                     self.tstep_h = ot.time.diff().values[-1] / HOUR
                     break
@@ -221,10 +221,10 @@ class TrackRun:
         if subset in [slice(None), None, 'all']:
             return self.data
         else:
-            return self.data[self.data.cat >= self.cats[subset]]
+            return self.data[self.data.cat >= self._cats[subset]]
 
     @property
-    def gb(self):
+    def _gb(self):
         """Group by track index."""
         return self.data.groupby('track_idx')
 
@@ -237,8 +237,8 @@ class TrackRun:
         """
         Read tracking results from a directory into `TrackRun.data` attribute.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         dirname: pathlib.Path
             Path to the directory with tracking output
         columns: sequence of str, optional
@@ -282,7 +282,7 @@ class TrackRun:
             _data.append(OctantTrack.from_df(pd.read_csv(fname, **load_kw)))
         if len(_data) > 0:
             self.data = pd.concat(_data, keys=range(len(_data)),
-                                  names=self.mux_names)
+                                  names=self._mux_names)
             self.data['cat'] = 0
             # Scale vorticity to (s-1)
             self.data['vo'] *= scale_vo
@@ -293,8 +293,8 @@ class TrackRun:
         """
         Construct TrackRun object from HDF5 file.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         filename: str
             File path to HDF5 file
 
@@ -308,7 +308,7 @@ class TrackRun:
             metadata = store.get_storer(ARCH_KEY).attrs.metadata
         tr = cls()
         if df.shape[0] > 0:
-            tr.data = OctantTrack.from_mux_df(df.set_index(cls.mux_names))
+            tr.data = OctantTrack.from_mux_df(df.set_index(cls._mux_names))
         else:
             tr.data = OctantTrack.from_mux_df(df)
         metadata['conf'] = TrackSettings.from_dict(metadata['conf'])
@@ -319,8 +319,8 @@ class TrackRun:
         """
         Save TrackRun and its metadata to HDF5 file.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         filename: str
             File path to HDF5 file
         """
@@ -339,7 +339,7 @@ class TrackRun:
         """
         Extend the TrackRun by appending elements from another TrackRun.
 
-        Arguments
+        Parameters
         ---------
         other: octant.core.TrackRun
             Another TrackRun
@@ -375,8 +375,8 @@ class TrackRun:
         """
         Subset TrackRun by time using pandas boolean indexing.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         start: str or datetime.datetime, optional
             Start of the slice (inclusive)
         stop: str or datetime.datetime, optional
@@ -389,7 +389,7 @@ class TrackRun:
         Examples
         --------
         >>> from octant.core import TrackRun
-        >>> tr = TrackRun(/path/to/directory)
+        >>> tr = TrackRun(path_to_directory_with_tracks)
         >>> sub_tr = tr.time_slice('2018-09-04', '2018-11-25')
         """
         if (start is None) and (end is None):
@@ -433,8 +433,8 @@ class TrackRun:
          - type
          - vorticity maximum
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         filt_by_time: bool, optional
             Filter by the time threshold
         time_thresh0: int, optional
@@ -451,8 +451,8 @@ class TrackRun:
         filt_by_domain_bounds: bool, optional
             Filter by the proximity to domain boundarie, which are taken from
             the `self.conf` instance if present: lon1, lon2, lat2, lat2
-        lsm: xarray.DataArray of rank 2, optional
-            Land-sea mask
+        lsm: xarray.DataArray, optional
+            Two-dimensional land-sea mask
             If present, tracks that spend > 0.5 of their lifetime
             within `coast_rad` radius from the coastline are discarded
         coast_rad: float, optional
@@ -510,7 +510,7 @@ class TrackRun:
             lon2d_c = lon2d.astype('double', order='C')
             lat2d_c = lat2d.astype('double', order='C')
 
-        for i, ot in pbar(self.gb, desc='tracks'):
+        for i, ot in pbar(self._gb, desc='tracks'):
             basic_flag = True
             moderate_flag = True
             # 1. Minimal filter
@@ -524,7 +524,7 @@ class TrackRun:
                 basic_flag = False
 
             if basic_flag:
-                self.data.loc[i, 'cat'] = self.cats['basic']
+                self.data.loc[i, 'cat'] = self._cats['basic']
                 # 2. moderate filter
                 # 2.1. Filter by flag assigned by the tracking algorithm
                 if (ot.vortex_type != 0).sum() / ot.shape[0] > type_thresh:
@@ -534,7 +534,7 @@ class TrackRun:
                     moderate_flag = False
 
                 if moderate_flag:
-                    self.data.loc[i, 'cat'] = self.cats['moderate']
+                    self.data.loc[i, 'cat'] = self._cats['moderate']
                     # 3. Strong filter
                     # 3.1. Filter by vorticity [Watanabe et al., 2016, p.2509]
                     if filt_by_vort:
@@ -545,9 +545,9 @@ class TrackRun:
                                 (ot.lifetime_h > time_thresh1)
                             )
                         ):
-                            self.data.loc[i, 'cat'] = self.cats['strong']
+                            self.data.loc[i, 'cat'] = self._cats['strong']
             else:
-                self.data.loc[i, 'cat'] = self.cats['unknown']
+                self.data.loc[i, 'cat'] = self._cats['unknown']
         if filt_by_percentile:
             # 3.2 Filter by percentile-defined vorticity threshold
             vo_per_track = (self['moderate'].groupby('track_idx')
@@ -555,7 +555,7 @@ class TrackRun:
             if len(vo_per_track) > 0:
                 vo_thresh = np.percentile(vo_per_track, strong_percentile)
                 strong = vo_per_track[vo_per_track > vo_thresh]
-                self.data.loc[strong.index, 'cat'] = self.cats['strong']
+                self.data.loc[strong.index, 'cat'] = self._cats['strong']
 
         self.is_categorised = True
 
@@ -566,8 +566,8 @@ class TrackRun:
         """
         Match tracked vortices to a list of vortices from another data source.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         others: list or octant.core.TrackRun
             List of dataframes or a TrackRun instance
         subset: str, optional
@@ -593,8 +593,8 @@ class TrackRun:
         match_pairs: list
             Index pairs of `other` vortices matching a vortex in `TrackRun`
             in a form (<index of `TrackRun` subset>, <index of `other`>)
-        dist_matrix: numpy array of rank 2
-            returned if return_dist_matrix=True
+        dist_matrix: numpy.ndarray
+            2D array, returned if return_dist_matrix=True
         """
         sub_gb = self[subset].groupby('track_idx')
         if len(sub_gb) == 0 or len(others) == 0:
@@ -604,7 +604,7 @@ class TrackRun:
             other_gb = (pd.concat([OctantTrack.from_df(df)
                                    for df in others],
                                   keys=range(len(others)),
-                                  names=self.mux_names)
+                                  names=self._mux_names)
                         .groupby('track_idx'))
         elif isinstance(others, self.__class__):
             # match against another TrackRun
@@ -725,12 +725,12 @@ class TrackRun:
         - `genesis`: starting positions (excluding start date of tracking)
         - `lysis`: ending positions (excluding final date of tracking)
 
-        Arguments
-        ---------
-        lon2d: array of shape (M, N)
-            Longitude grid
-        lat2d: array of shape (M, N)
-            Latitude grid
+        Parameters
+        ----------
+        lon2d: numpy.ndarray
+            Longitude grid of shape (M, N)
+        lat2d: numpy.ndarray
+            Latitude grid of shape (M, N)
         by: str, optional
             Type of cyclone density (point|track|genesis|lysis)
         subset: str, optional

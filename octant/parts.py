@@ -7,23 +7,21 @@ class TrackSettings:
     """
     Dictionary-like container of tracking settings.
 
-    TrackSettings object is constructed by reading .conf file used by
+    TrackSettings object is constructed by reading `.conf` file used by
     the tracking algorithm.
 
-    Note: the .conf file can only have lines with
-    key-value pairs, e.g.
-    lon1=20
-    or comment lines starting with #
+    Note: the `.conf` file can only have lines with key-value pairs, e.g.
+    `lon1=20` or comment lines starting with #
     """
 
     def __init__(self, fname_path=None):
         """
         Initialise TrackSettings.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         fname_path: pathlib.Path
-            Path to .conf file with settings
+            Path to `.conf` file with settings
             (usually is in the same folder as the tracking output)
         """
         self._fields = []
@@ -90,8 +88,8 @@ class TrackSettings:
         """
         Construct TrackSettings from a dictionary.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
         data: dict
             Dictionary with appropriate keys
 
