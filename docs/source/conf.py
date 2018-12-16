@@ -41,14 +41,14 @@ release = version
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
     'sphinx.ext.extlinks',
     'sphinx.ext.intersphinx',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'numpydoc',
 ]
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -75,7 +75,8 @@ language = None
 exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = None
+pygments_style = 'sphinx'
+highlight_language = 'python'
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -87,8 +88,8 @@ html_theme_path = ['_themes']
 
 # import sphinx_rtd_theme  # noqa
 # html_theme = 'sphinx_rtd_theme'
-# html_theme = 'sphinx13'
-html_theme = 'sphinxdoc'
+# html_theme = 'sphinxdoc'
+html_theme = 'sphinx13_octant'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -192,13 +193,17 @@ epub_exclude_files = ['search.html']
 # -- Options for intersphinx extension ---------------------------------------
 # Options for intersphinx.
 intersphinx_mapping = {
-    'iris': ('https://scitools.org.uk/iris/docs/latest', None),
     'numpy': ('https://docs.scipy.org/doc/numpy', None),
     'pandas': ('http://pandas.pydata.org/', None),
     'python': ('https://docs.python.org/3/', None),
     'xarray': ('https://xarray.pydata.org/en/stable', None),
 }
 
-# -- Autodoc settings -- #
-autoclass_content = 'class'
-autodoc_member_order = 'bysource'
+# -- Autodoc settings --
+autodoc_default_options = {
+    'autoclass_content': 'both',
+    'member-order': 'bysource',
+    'members': None,
+    'special-members': '__init__',
+    'show-inheritance': None,
+}

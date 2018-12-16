@@ -20,19 +20,19 @@ from .utils import (distance_metric, great_circle, mask_tracks,
                     track_density_cell, track_density_rad)
 
 
-class OctantSeries(pd.Series):
+class _OctantSeries(pd.Series):
     """`pandas.Series` subclass used in octant library."""
 
     @property
     def _constructor(self):
-        return OctantSeries
+        return _OctantSeries
 
 
 class OctantTrack(pd.DataFrame):
     """
     Instance of cyclone track.
 
-    Subclass of `pandas.DataFrame`.
+    DataFrame with a bunch of extra methods and properties.
     """
 
     def __init__(self, *args, **kw):
@@ -43,7 +43,7 @@ class OctantTrack(pd.DataFrame):
     def _constructor(self):
         return OctantTrack  # replace with self.__class__?
 
-    _constructor_sliced = OctantSeries
+    _constructor_sliced = _OctantSeries
 
     @classmethod
     def from_df(cls, df):
