@@ -9,9 +9,3 @@ Here are few examples on how to use octant
 .. note::
 
    These examples provide practical ways to illustrate the usage of the software, and do not necessarily represent the best scientific methods for any particular type of study.
-
-.. toctree::
-   :maxdepth: 1
-
-   Plotting.ipynb
-   Basics.ipynb
