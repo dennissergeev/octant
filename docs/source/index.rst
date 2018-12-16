@@ -1,17 +1,16 @@
 octant
 ======
 
-Objective Cyclone Tracking ANalysis Tools
-
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+   :glob:
 
-   contributing
    overview
-   examples
+   examples/index.rst
    api
+   changelog
+   contributing
 
 License
 -------
@@ -23,5 +22,4 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`

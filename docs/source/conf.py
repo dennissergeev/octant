@@ -16,6 +16,9 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+from glob import glob
+import os
+
 import octant
 
 
@@ -46,6 +49,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
+    'nbsphinx',
 ]
 napoleon_numpy_docstring = True
 napoleon_include_init_with_doc = False
@@ -207,3 +211,20 @@ autodoc_default_options = {
     'special-members': '__init__',
     'show-inheritance': None,
 }
+
+
+# nbsphinx linking
+examples_src_dir = '../../examples'
+examples_doc_dir = 'examples'
+
+for nb_f in glob(os.path.join(examples_doc_dir, '*.ipynb')):
+    if os.path.islink(nb_f):
+        os.unlink(nb_f)
+
+for nb_f in glob(os.path.join(examples_src_dir, '*.ipynb')):
+    _bn = os.path.basename(nb_f)
+    if _bn.startswith('Untitled'):
+        continue
+    os.symlink(os.path.abspath(nb_f), os.path.join(examples_doc_dir, _bn))
+    with open(os.path.join(examples_doc_dir, 'index.rst'), 'a') as fw:
+        fw.write('   {}\n'.format(_bn))
