@@ -12,3 +12,6 @@ Here are few examples on how to use octant
 
 .. toctree::
    :maxdepth: 1
+
+   Plotting.ipynb
+   Basics.ipynb
