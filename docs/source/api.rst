@@ -1,15 +1,13 @@
-##############
-The octant API
-##############
+.. _api:
+
+#############
+API reference
+#############
 
 Here the reference documentation is provided for octant's public API.
 If you are new to the package or just trying to get a feel for the
-overall workflow, you are better off starting in the :ref:`Overview
-<overview>`, or :ref:`examples` sections of the documentation.
-
-:py:class:`numpy.ndarray`
-:py:class:`pandas.DataFrame`
-:py:class:`xarray.DataArray`
+overall workflow, you are better off starting in the :ref:`overview`,
+or :ref:`examples` sections of the documentation.
 
 .. warning::
 
