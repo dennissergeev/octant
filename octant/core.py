@@ -15,9 +15,16 @@ from .exceptions import ArgumentError, GridError, LoadError, MissingConfWarning
 from .misc import _exclude_by_first_day, _exclude_by_last_day
 from .params import ARCH_KEY, CATS, COLUMNS, HOUR, M2KM
 from .parts import TrackSettings
-from .utils import (distance_metric, great_circle, mask_tracks,
-                    point_density_cell, point_density_rad, total_dist,
-                    track_density_cell, track_density_rad)
+from .utils import (
+    distance_metric,
+    great_circle,
+    mask_tracks,
+    point_density_cell,
+    point_density_rad,
+    total_dist,
+    track_density_cell,
+    track_density_rad,
+)
 
 
 class _OctantSeries(pd.Series):
@@ -54,50 +61,56 @@ class OctantTrack(pd.DataFrame):
     def from_mux_df(cls, df):
         """Create OctantTrack from a multi-index pandas.DataFrame."""
         if df.shape[0] > 0:
-            return cls.from_records(df.to_records(index=True),
-                                    index=df.index.names)
+            return cls.from_records(df.to_records(index=True), index=df.index.names)
         else:
             return cls(columns=df.columns, index=df.index)
 
     @property
     def coord_view(self):
         """Numpy view of track coordinates: longitude, latitude, time."""
-        return (self.lon.values.view('double'),
-                self.lat.values.view('double'),
-                self.time.values.view('int64'))
+        return (
+            self.lon.values.view("double"),
+            self.lat.values.view("double"),
+            self.time.values.view("int64"),
+        )
 
     @property
     def lonlat(self):
         """Values of longitude and latitude as 2D numpy array."""
-        return self[['lon', 'lat']].values
+        return self[["lon", "lat"]].values
 
     @property
     def lonlat_c(self):
         """Values of longitude and latitude as C-ordered 2D numpy array."""
-        return self.lonlat.astype('double', order='C')
+        return self.lonlat.astype("double", order="C")
 
     @property
     def tridlonlat(self):
         """Values of track index, longitude, latitude as 2D numpy array."""
-        return (self.reset_index('track_idx')
-                [['track_idx', 'lon', 'lat']].values)
+        return self.reset_index("track_idx")[["track_idx", "lon", "lat"]].values
 
     @property
     def tridlonlat_c(self):
         """Values of track index, longitude, latitude as C-order 2D array."""
-        return self.tridlonlat.astype('double', order='C')
+        return self.tridlonlat.astype("double", order="C")
 
     @property
     def lifetime_h(self):
         """Track duration in hours."""
-        return (self.time.values[-1]
-                - self.time.values[0]) / HOUR
+        return (self.time.values[-1] - self.time.values[0]) / HOUR
 
     @property
     def gen_lys_dist_km(self):
         """Distance between genesis and lysis of the cyclone track in km."""
-        return great_circle(self.lonlat[0, 0], self.lonlat[-1, 0],
-                            self.lonlat[0, 1], self.lonlat[-1, 1]) * M2KM
+        return (
+            great_circle(
+                self.lonlat[0, 0],
+                self.lonlat[-1, 0],
+                self.lonlat[0, 1],
+                self.lonlat[-1, 1],
+            )
+            * M2KM
+        )
 
     @property
     def total_dist_km(self):
@@ -140,6 +153,7 @@ class OctantTrack(pd.DataFrame):
             The same ax as the input ax (if given), or a newly created axes
         """
         from .plotting import plot
+
         return plot(self, ax=ax, **kwargs)
 
 
@@ -156,7 +170,7 @@ class TrackRun:
 
     """
 
-    _mux_names = ['track_idx', 'row_idx']
+    _mux_names = ["track_idx", "row_idx"]
     _cats = CATS
 
     def __init__(self, dirname=None, columns=COLUMNS):
@@ -185,7 +199,7 @@ class TrackRun:
             # as a list of `pandas.DataFrame`s
             self.load_data(self.dirname, columns=self.columns)
         elif self.dirname is not None:
-            raise LoadError('dirname should be Path-like object')
+            raise LoadError("dirname should be Path-like object")
 
         if not self.data.empty:
             # Define time step
@@ -218,7 +232,7 @@ class TrackRun:
         return new
 
     def __getitem__(self, subset):  # noqa
-        if subset in [slice(None), None, 'all']:
+        if subset in [slice(None), None, "all"]:
             return self.data
         else:
             return self.data[self.data.cat >= self._cats[subset]]
@@ -226,14 +240,15 @@ class TrackRun:
     @property
     def _gb(self):
         """Group by track index."""
-        return self.data.groupby('track_idx')
+        return self.data.groupby("track_idx")
 
     def size(self, subset=None):
         """Size of subset of tracks."""
         return self[subset].index.get_level_values(0).to_series().nunique()
 
-    def load_data(self, dirname, columns=COLUMNS, primary_only=True,
-                  conf_file=None, scale_vo=1e-3):
+    def load_data(
+        self, dirname, columns=COLUMNS, primary_only=True, conf_file=None, scale_vo=1e-3
+    ):
         """
         Read tracking results from a directory into `TrackRun.data` attribute.
 
@@ -254,38 +269,41 @@ class TrackRun:
             so scale_vo default is 1e-3. To switch off scaling, set it to 1.
         """
         if not dirname.is_dir():
-            raise LoadError(f'No such directory: {dirname}')
+            raise LoadError(f"No such directory: {dirname}")
         if primary_only:
-            wcard = 'vortrack*0001.txt'
+            wcard = "vortrack*0001.txt"
         else:
-            wcard = 'vortrack*.txt'
+            wcard = "vortrack*.txt"
         self.filelist = sorted([*dirname.glob(wcard)])
         self.sources.append(str(dirname))
 
         # Load configuration
         if conf_file is None:
             try:
-                conf_file = list(dirname.glob('*.conf'))[0]
+                conf_file = list(dirname.glob("*.conf"))[0]
                 self.conf = TrackSettings(conf_file)
             except (IndexError, AttributeError):
-                msg = ('Track settings file (.conf) in the `dirname` directory'
-                       'is missing or could not be read')
+                msg = (
+                    "Track settings file (.conf) in the `dirname` directory"
+                    "is missing or could not be read"
+                )
                 warnings.warn(msg, MissingConfWarning)
 
         # Load the tracks
         self.columns = columns
-        load_kw = {'delimiter': r'\s+',  # noqa
-                   'names': self.columns,
-                   'parse_dates': ['time']}
+        load_kw = {
+            "delimiter": r"\s+",  # noqa
+            "names": self.columns,
+            "parse_dates": ["time"],
+        }
         _data = []
         for fname in self.filelist:
             _data.append(OctantTrack.from_df(pd.read_csv(fname, **load_kw)))
         if len(_data) > 0:
-            self.data = pd.concat(_data, keys=range(len(_data)),
-                                  names=self._mux_names)
-            self.data['cat'] = 0
+            self.data = pd.concat(_data, keys=range(len(_data)), names=self._mux_names)
+            self.data["cat"] = 0
             # Scale vorticity to (s-1)
-            self.data['vo'] *= scale_vo
+            self.data["vo"] *= scale_vo
         del _data
 
     @classmethod
@@ -303,7 +321,7 @@ class TrackRun:
         octant.core.TrackRun
 
         """
-        with pd.HDFStore(filename, mode='r') as store:
+        with pd.HDFStore(filename, mode="r") as store:
             df = store[ARCH_KEY]
             metadata = store.get_storer(ARCH_KEY).attrs.metadata
         tr = cls()
@@ -311,7 +329,7 @@ class TrackRun:
             tr.data = OctantTrack.from_mux_df(df.set_index(cls._mux_names))
         else:
             tr.data = OctantTrack.from_mux_df(df)
-        metadata['conf'] = TrackSettings.from_dict(metadata['conf'])
+        metadata["conf"] = TrackSettings.from_dict(metadata["conf"])
         tr.__dict__.update(metadata)
         return tr
 
@@ -324,15 +342,18 @@ class TrackRun:
         filename: str
             File path to HDF5 file
         """
-        with pd.HDFStore(filename, mode='w') as store:
+        with pd.HDFStore(filename, mode="w") as store:
             if self.size() > 0:
                 df = pd.DataFrame.from_records(self.data.to_records(index=True))
             else:
                 df = pd.DataFrame(columns=self.columns, index=self.data.index)
             store.put(ARCH_KEY, df)
-            metadata = {k: v for k, v in self.__dict__.items()
-                        if k not in ['data', 'filelist', 'conf']}
-            metadata['conf'] = getattr(self.conf, 'to_dict', lambda: {})()
+            metadata = {
+                k: v
+                for k, v in self.__dict__.items()
+                if k not in ["data", "filelist", "conf"]
+            }
+            metadata["conf"] = getattr(self.conf, "to_dict", lambda: {})()
             store.get_storer(ARCH_KEY).attrs.metadata = metadata
 
     def extend(self, other, adapt_conf=True):
@@ -351,9 +372,10 @@ class TrackRun:
         new_track_idx = new_data.index.get_level_values(0).to_series()
         new_track_idx = new_track_idx.ne(new_track_idx.shift()).cumsum() - 1
 
-        mux = pd.MultiIndex.from_arrays([new_track_idx,
-                                         new_data.index.get_level_values(1)],
-                                        names=new_data.index.names)
+        mux = pd.MultiIndex.from_arrays(
+            [new_track_idx, new_data.index.get_level_values(1)],
+            names=new_data.index.names,
+        )
         self.data = new_data.set_index(mux)
 
         if adapt_conf and other.conf is not None:
@@ -364,11 +386,11 @@ class TrackRun:
                     if getattr(self.conf, field) != getattr(other.conf, field):
                         setattr(self.conf, field, None)
         self.sources.extend(other.sources)
-        if getattr(self, 'tstep_h', None) is None:
-            self.tstep_h = getattr(other, 'tstep_h', None)
+        if getattr(self, "tstep_h", None) is None:
+            self.tstep_h = getattr(other, "tstep_h", None)
         else:
-            if getattr(other, 'tstep_h', None) is not None:
-                _msg = 'Extending by a TrackRun with different timestep is not allowed'
+            if getattr(other, "tstep_h", None) is not None:
+                _msg = "Extending by a TrackRun with different timestep is not allowed"
                 assert self.tstep_h == other.tstep_h, _msg
 
     def time_slice(self, start=None, end=None):
@@ -397,9 +419,9 @@ class TrackRun:
         else:
             crit = True
             if start is not None:
-                crit &= (self.data.time >= start)
+                crit &= self.data.time >= start
             if end is not None:
-                crit &= (self.data.time <= end)
+                crit &= self.data.time <= end
             # Create a copy of this TrackRun
             result = self.__class__()
             result.extend(self)
@@ -416,13 +438,24 @@ class TrackRun:
                 pass
             return result
 
-    def categorise(self, filt_by_time=True, filt_by_dist=True,
-                   filt_by_vort=False, filt_by_domain_bounds=True,
-                   filt_by_land=True, filt_by_percentile=True,
-                   strong_percentile=95,
-                   time_thresh0=6, time_thresh1=9,
-                   dist_thresh=300., type_thresh=0.2, lsm=None, coast_rad=50.,
-                   vort_thresh0=3e-4, vort_thresh1=4.5e-4):
+    def categorise(
+        self,
+        filt_by_time=True,
+        filt_by_dist=True,
+        filt_by_vort=False,
+        filt_by_domain_bounds=True,
+        filt_by_land=True,
+        filt_by_percentile=True,
+        strong_percentile=95,
+        time_thresh0=6,
+        time_thresh1=9,
+        dist_thresh=300.0,
+        type_thresh=0.2,
+        lsm=None,
+        coast_rad=50.0,
+        vort_thresh0=3e-4,
+        vort_thresh1=4.5e-4,
+    ):
         """
         Classify the loaded tracks.
 
@@ -479,10 +512,11 @@ class TrackRun:
             E.g. 95 means the top 5% strongest cyclones.
         """
         if filt_by_percentile and filt_by_vort:
-            raise ArgumentError(('Either filt_by_percentile or filt_by_vort'
-                                 'should be on'))
+            raise ArgumentError(
+                ("Either filt_by_percentile or filt_by_vort" "should be on")
+            )
         # Save filtering params just in case
-        self._cat_params = {k: v for k, v in locals().items() if k != 'self'}
+        self._cat_params = {k: v for k, v in locals().items() if k != "self"}
         # 0. Prepare mask for spatial filtering
         filt_by_mask = False
         if isinstance(lsm, xr.DataArray):
@@ -495,36 +529,41 @@ class TrackRun:
             if filt_by_domain_bounds:
                 filt_by_mask = True
                 inner_idx = True
-                if getattr(self.conf, 'lon1', None):
+                if getattr(self.conf, "lon1", None):
                     inner_idx &= lon2d >= self.conf.lon1
-                if getattr(self.conf, 'lon2', None):
+                if getattr(self.conf, "lon2", None):
                     inner_idx &= lon2d <= self.conf.lon2
-                if getattr(self.conf, 'lat1', None):
+                if getattr(self.conf, "lat1", None):
                     inner_idx &= lat2d >= self.conf.lat1
-                if getattr(self.conf, 'lat2', None):
+                if getattr(self.conf, "lat2", None):
                     inner_idx &= lat2d <= self.conf.lat2
                 boundary_mask = np.zeros_like(lon2d)
-                boundary_mask[~inner_idx] = 1.
-            self.themask = (((boundary_mask == 1.) | (l_mask == 1.)) * 1.)
-            themask_c = self.themask.astype('double', order='C')
-            lon2d_c = lon2d.astype('double', order='C')
-            lat2d_c = lat2d.astype('double', order='C')
+                boundary_mask[~inner_idx] = 1.0
+            self.themask = ((boundary_mask == 1.0) | (l_mask == 1.0)) * 1.0
+            themask_c = self.themask.astype("double", order="C")
+            lon2d_c = lon2d.astype("double", order="C")
+            lat2d_c = lat2d.astype("double", order="C")
 
-        for i, ot in pbar(self._gb, desc='tracks'):
+        for i, ot in pbar(self._gb, desc="tracks"):
             basic_flag = True
             moderate_flag = True
             # 1. Minimal filter
             # 1.1. Filter by duration threshold
-            if (filt_by_time and (ot.lifetime_h < time_thresh0)):
+            if filt_by_time and (ot.lifetime_h < time_thresh0):
                 basic_flag = False
             # 1.2. Filter by land mask and domain boundaries
-            if (basic_flag and filt_by_mask
-                and mask_tracks(themask_c, lon2d_c, lat2d_c,
-                                ot.lonlat_c, coast_rad * 1e3) > 0.5):
+            if (
+                basic_flag
+                and filt_by_mask
+                and mask_tracks(
+                    themask_c, lon2d_c, lat2d_c, ot.lonlat_c, coast_rad * 1e3
+                )
+                > 0.5
+            ):
                 basic_flag = False
 
             if basic_flag:
-                self.data.loc[i, 'cat'] = self._cats['basic']
+                self.data.loc[i, "cat"] = self._cats["basic"]
                 # 2. moderate filter
                 # 2.1. Filter by flag assigned by the tracking algorithm
                 if (ot.vortex_type != 0).sum() / ot.shape[0] > type_thresh:
@@ -534,35 +573,40 @@ class TrackRun:
                     moderate_flag = False
 
                 if moderate_flag:
-                    self.data.loc[i, 'cat'] = self._cats['moderate']
+                    self.data.loc[i, "cat"] = self._cats["moderate"]
                     # 3. Strong filter
                     # 3.1. Filter by vorticity [Watanabe et al., 2016, p.2509]
                     if filt_by_vort:
-                        if (
-                            (ot.vo > vort_thresh1).any() or
-                            (
-                                ((ot.vo > vort_thresh0).sum() > 1) and
-                                (ot.lifetime_h > time_thresh1)
-                            )
+                        if (ot.vo > vort_thresh1).any() or (
+                            ((ot.vo > vort_thresh0).sum() > 1)
+                            and (ot.lifetime_h > time_thresh1)
                         ):
-                            self.data.loc[i, 'cat'] = self._cats['strong']
+                            self.data.loc[i, "cat"] = self._cats["strong"]
             else:
-                self.data.loc[i, 'cat'] = self._cats['unknown']
+                self.data.loc[i, "cat"] = self._cats["unknown"]
         if filt_by_percentile:
             # 3.2 Filter by percentile-defined vorticity threshold
-            vo_per_track = (self['moderate'].groupby('track_idx')
-                            .apply(lambda x: x.max_vort))
+            vo_per_track = (
+                self["moderate"].groupby("track_idx").apply(lambda x: x.max_vort)
+            )
             if len(vo_per_track) > 0:
                 vo_thresh = np.percentile(vo_per_track, strong_percentile)
                 strong = vo_per_track[vo_per_track > vo_thresh]
-                self.data.loc[strong.index, 'cat'] = self._cats['strong']
+                self.data.loc[strong.index, "cat"] = self._cats["strong"]
 
         self.is_categorised = True
 
-    def match_tracks(self, others, subset='basic', method='simple',
-                     interpolate_to='other',
-                     thresh_dist=250., time_frac_thresh=0.5,
-                     return_dist_matrix=False, beta=100.):
+    def match_tracks(
+        self,
+        others,
+        subset="basic",
+        method="simple",
+        interpolate_to="other",
+        thresh_dist=250.0,
+        time_frac_thresh=0.5,
+        return_dist_matrix=False,
+        beta=100.0,
+    ):
         """
         Match tracked vortices to a list of vortices from another data source.
 
@@ -596,56 +640,58 @@ class TrackRun:
         dist_matrix: numpy.ndarray
             2D array, returned if return_dist_matrix=True
         """
-        sub_gb = self[subset].groupby('track_idx')
+        sub_gb = self[subset].groupby("track_idx")
         if len(sub_gb) == 0 or len(others) == 0:
             return []
         if isinstance(others, list):
             # match against a list of DataFrames of tracks
-            other_gb = (pd.concat([OctantTrack.from_df(df)
-                                   for df in others],
-                                  keys=range(len(others)),
-                                  names=self._mux_names)
-                        .groupby('track_idx'))
+            other_gb = pd.concat(
+                [OctantTrack.from_df(df) for df in others],
+                keys=range(len(others)),
+                names=self._mux_names,
+            ).groupby("track_idx")
         elif isinstance(others, self.__class__):
             # match against another TrackRun
-            other_gb = others[subset].groupby('track_idx')
+            other_gb = others[subset].groupby("track_idx")
         else:
-            raise ArgumentError('Argument "others" '
-                                f'has a wrong type: {type(others)}')
+            raise ArgumentError(
+                'Argument "others" ' f"has a wrong type: {type(others)}"
+            )
         match_pairs = []
-        if method == 'intersection':
-            for idx, ot in pbar(sub_gb, desc='self tracks'):
-                for other_idx, other_ot in pbar(other_gb, desc='other tracks',
-                                                leave=False):
+        if method == "intersection":
+            for idx, ot in pbar(sub_gb, desc="self tracks"):
+                for other_idx, other_ot in pbar(
+                    other_gb, desc="other tracks", leave=False
+                ):
                     times = other_ot.time.values
-                    time_match_thresh = (time_frac_thresh
-                                         * (times[-1] - times[0]) / HOUR)
+                    time_match_thresh = time_frac_thresh * (times[-1] - times[0]) / HOUR
 
-                    intersect = pd.merge(other_ot, ot, how='inner',
-                                         left_on='time', right_on='time')
+                    intersect = pd.merge(
+                        other_ot, ot, how="inner", left_on="time", right_on="time"
+                    )
                     n_match_times = intersect.shape[0]
                     if n_match_times > 0:
                         _tstep_h = intersect.time.diff().values[-1] / HOUR
-                        dist = (intersect[['lon_x', 'lon_y', 'lat_x', 'lat_y']]
-                                .apply(lambda x: great_circle(*x.values),
-                                       axis=1))
-                        prox_time = ((dist < (thresh_dist * 1e3)).sum()
-                                     * _tstep_h)
-                        if ((n_match_times * _tstep_h > time_match_thresh)
-                                and prox_time > time_match_thresh):
+                        dist = intersect[["lon_x", "lon_y", "lat_x", "lat_y"]].apply(
+                            lambda x: great_circle(*x.values), axis=1
+                        )
+                        prox_time = (dist < (thresh_dist * 1e3)).sum() * _tstep_h
+                        if (
+                            n_match_times * _tstep_h > time_match_thresh
+                        ) and prox_time > time_match_thresh:
                             match_pairs.append((idx, other_idx))
                             break
 
-        elif method == 'simple':
+        elif method == "simple":
             # TODO: explain
-            ll = ['lon', 'lat']
+            ll = ["lon", "lat"]
             match_pairs = []
-            for other_idx, other_ct in pbar(other_gb, desc='other tracks'):
+            for other_idx, other_ct in pbar(other_gb, desc="other tracks"):
                 candidates = []
-                for idx, ct in pbar(sub_gb, leave=False, desc='self tracks'):
-                    if interpolate_to == 'other':
+                for idx, ct in pbar(sub_gb, leave=False, desc="self tracks"):
+                    if interpolate_to == "other":
                         df1, df2 = ct.copy(), other_ct
-                    elif interpolate_to == 'self':
+                    elif interpolate_to == "self":
                         df1, df2 = other_ct, ct.copy()
                     l_start = max(df1.time.values[0], df2.time.values[0])
                     e_end = min(df1.time.values[-1], df2.time.values[-1])
@@ -655,17 +701,21 @@ class TrackRun:
                         # new_df1 = (pd.concat([df1, ts]).sort_index()
                         #            .interpolate(method='values')
                         #            .loc[ts.index])[ll]
-                        tmp_df2 = pd.DataFrame(data={'lon': np.nan,
-                                                     'lat': np.nan,
-                                                     'time': df2.time},
-                                               index=df2.index)
-                        new_df1 = (pd.concat([df1[[*ll, 'time']], tmp_df2],
-                                             ignore_index=True,
-                                             keys='time')
-                                   .set_index('time')
-                                   .sort_index()
-                                   .interpolate(method='values')
-                                   .loc[tmp_df2.time])[ll]
+                        tmp_df2 = pd.DataFrame(
+                            data={"lon": np.nan, "lat": np.nan, "time": df2.time},
+                            index=df2.index,
+                        )
+                        new_df1 = (
+                            pd.concat(
+                                [df1[[*ll, "time"]], tmp_df2],
+                                ignore_index=True,
+                                keys="time",
+                            )
+                            .set_index("time")
+                            .sort_index()
+                            .interpolate(method="values")
+                            .loc[tmp_df2.time]
+                        )[ll]
                         new_df1 = new_df1[~new_df1.lon.isnull()]
 
                         # thr = (time_frac_thresh * 0.5
@@ -673,9 +723,9 @@ class TrackRun:
                         #          + df1.time.values[-1] - df2.time.values[0]))
                         thr = time_frac_thresh * df2.shape[0]
                         dist_diff = np.full(new_df1.shape[0], 9e20)
-                        for i, ((x1, y1),
-                                (x2, y2)) in enumerate(zip(new_df1[ll].values,
-                                                           df2[ll].values)):
+                        for i, ((x1, y1), (x2, y2)) in enumerate(
+                            zip(new_df1[ll].values, df2[ll].values)
+                        ):
                             dist_diff[i] = great_circle(x1, x2, y1, y2)
                         within_r_idx = dist_diff < (thresh_dist * 1e3)
                         # if within_r_idx.any():
@@ -689,34 +739,42 @@ class TrackRun:
                     final_idx = candidates[-1][0]
                     match_pairs.append((final_idx, other_idx))
 
-        elif method == 'bs2000':
+        elif method == "bs2000":
             # sub_list = [i[0] for i in list(sub_gb)]
             sub_indices = list(sub_gb.indices.keys())
             other_indices = list(other_gb.indices.keys())
             dist_matrix = np.full((len(sub_gb), len(other_gb)), 9e20)
-            for i, (_, ct) in pbar(enumerate(sub_gb), desc='self tracks'):
+            for i, (_, ct) in pbar(enumerate(sub_gb), desc="self tracks"):
                 x1, y1, t1 = ct.coord_view
-                for j, (_, other_ct) in pbar(enumerate(other_gb),
-                                             desc='other tracks', leave=False):
+                for j, (_, other_ct) in pbar(
+                    enumerate(other_gb), desc="other tracks", leave=False
+                ):
                     x2, y2, t2 = other_ct.coord_view
-                    dist_matrix[i, j] = distance_metric(x1, y1, t1,
-                                                        x2, y2, t2,
-                                                        beta=float(beta))
+                    dist_matrix[i, j] = distance_metric(
+                        x1, y1, t1, x2, y2, t2, beta=float(beta)
+                    )
             for i, idx1 in enumerate(np.nanargmin(dist_matrix, axis=0)):
                 for j, idx2 in enumerate(np.nanargmin(dist_matrix, axis=1)):
                     if i == idx2 and j == idx1:
-                        match_pairs.append((sub_indices[idx1],
-                                            other_indices[idx2]))
+                        match_pairs.append((sub_indices[idx1], other_indices[idx2]))
             if return_dist_matrix:
                 return match_pairs, dist_matrix
         else:
-            raise ArgumentError(f'Unknown method: {method}')
+            raise ArgumentError(f"Unknown method: {method}")
 
         return match_pairs
 
-    def density(self, lon2d, lat2d, by='point', subset='basic',
-                method='radius', r=222.,
-                exclude_first={'m': 10, 'd': 1}, exclude_last={'m': 4, 'd': 30}):
+    def density(
+        self,
+        lon2d,
+        lat2d,
+        by="point",
+        subset="basic",
+        method="radius",
+        r=222.0,
+        exclude_first={"m": 10, "d": 1},
+        exclude_last={"m": 4, "d": 30},
+    ):
         """
         Calculate different types of cyclone density for a given lon-lat grid.
 
@@ -746,60 +804,63 @@ class TrackRun:
             Array of track density of shape (M, N) with useful metadata in attrs
         """
         # Prepare coordinates for cython
-        lon2d_c = lon2d.astype('double', order='C')
-        lat2d_c = lat2d.astype('double', order='C')
+        lon2d_c = lon2d.astype("double", order="C")
+        lat2d_c = lat2d.astype("double", order="C")
         # Prepare coordinates for output
-        xlon = xr.IndexVariable(dims='longitude',
-                                data=lon2d[0, :],
-                                attrs={'units': 'degrees_east'})
-        xlat = xr.IndexVariable(dims='latitude',
-                                data=lat2d[:, 0],
-                                attrs={'units': 'degrees_north'})
+        xlon = xr.IndexVariable(
+            dims="longitude", data=lon2d[0, :], attrs={"units": "degrees_east"}
+        )
+        xlat = xr.IndexVariable(
+            dims="latitude", data=lat2d[:, 0], attrs={"units": "degrees_north"}
+        )
         # Select subset
         sub_df = self[subset]
 
         # Select method
-        if method == 'radius':
+        if method == "radius":
             # Convert radius to metres
             r_metres = r * 1e3
-            units = f'per {round(np.pi * r**2)} km2'
-            if by == 'track':
+            units = f"per {round(np.pi * r**2)} km2"
+            if by == "track":
                 cy_func = partial(track_density_rad, rad=r_metres)
             else:
                 cy_func = partial(point_density_rad, rad=r_metres)
-        elif method == 'cell':
+        elif method == "cell":
             # TODO: check cell-method and its units
             # TODO: make this check more flexible
-            if ((np.diff(lon2d[0, :]) < 0).any() and
-                    (np.diff(lat2d[:, 0]) < 0).any()):
-                raise GridError('Grid values must be in an ascending order')
-            units = '1'
-            if by == 'track':
+            if (np.diff(lon2d[0, :]) < 0).any() and (np.diff(lat2d[:, 0]) < 0).any():
+                raise GridError("Grid values must be in an ascending order")
+            units = "1"
+            if by == "track":
                 cy_func = track_density_cell
             else:
                 cy_func = point_density_cell
 
         # Convert dataframe columns to C-ordered arrays
-        if by == 'point':
+        if by == "point":
             sub_data = sub_df.lonlat_c
-        elif by == 'track':
+        elif by == "track":
             sub_data = sub_df.tridlonlat_c
-        elif by == 'genesis':
-            sub_data = (sub_df
-                        .groupby('track_idx')
-                        .filter(_exclude_by_first_day, **exclude_first)
-                        .xs(0, level='row_idx')).lonlat_c
-        elif by == 'lysis':
-            sub_data = (self[subset]
-                        .groupby('track_idx')
-                        .tail(1)
-                        .groupby('track_idx')
-                        .filter(_exclude_by_last_day, **exclude_last)
-                        ).lonlat_c
+        elif by == "genesis":
+            sub_data = (
+                sub_df.groupby("track_idx")
+                .filter(_exclude_by_first_day, **exclude_first)
+                .xs(0, level="row_idx")
+            ).lonlat_c
+        elif by == "lysis":
+            sub_data = (
+                self[subset]
+                .groupby("track_idx")
+                .tail(1)
+                .groupby("track_idx")
+                .filter(_exclude_by_last_day, **exclude_last)
+            ).lonlat_c
 
-        dens = xr.DataArray(cy_func(lon2d_c, lat2d_c, sub_data).base,
-                            name=f'{by}_density',
-                            attrs={'units': units, 'subset': subset, 'method': method},
-                            dims=('latitude', 'longitude'),
-                            coords={'longitude': xlon, 'latitude': xlat})
+        dens = xr.DataArray(
+            cy_func(lon2d_c, lat2d_c, sub_data).base,
+            name=f"{by}_density",
+            attrs={"units": units, "subset": subset, "method": method},
+            dims=("latitude", "longitude"),
+            coords={"longitude": xlon, "latitude": xlat},
+        )
         return dens

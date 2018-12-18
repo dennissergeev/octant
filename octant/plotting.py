@@ -7,7 +7,7 @@ from cartopy.mpl.gridliner import LATITUDE_FORMATTER, LONGITUDE_FORMATTER
 import matplotlib.pyplot as plt
 
 DFLT_TRANSFORM = ccrs.PlateCarree()
-DFLT_COLOR = 'C0'
+DFLT_COLOR = "C0"
 
 
 def plot(df, ax=None, transform=DFLT_TRANSFORM, **kwargs):
@@ -36,8 +36,12 @@ def plot(df, ax=None, transform=DFLT_TRANSFORM, **kwargs):
     if ax is None:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection=DFLT_TRANSFORM)
-        extent = [df.lon.min() - 5, df.lon.max() + 5,
-                  df.lat.min() - 2, df.lat.max() + 2]
+        extent = [
+            df.lon.min() - 5,
+            df.lon.max() + 5,
+            df.lat.min() - 2,
+            df.lat.max() + 2,
+        ]
         ax.set_extent(extent, crs=transform)
         gl = ax.gridlines(draw_labels=True)
         gl.xlabels_top = gl.ylabels_right = False
@@ -45,14 +49,16 @@ def plot(df, ax=None, transform=DFLT_TRANSFORM, **kwargs):
         gl.yformatter = LATITUDE_FORMATTER
         ax.coastlines()
     if isinstance(ax, GeoAxesSubplot):
-        mapkw = {'transform': transform}
+        mapkw = {"transform": transform}
     else:
         mapkw = {}
-    color = kwargs.pop('color', DFLT_COLOR)
+    color = kwargs.pop("color", DFLT_COLOR)
     l, = ax.plot(df.lon, df.lat, color=color, **kwargs, **mapkw)
     color = l.get_color()  # hold color value if None is given
-    ax.plot(df.lon.values[0], df.lat.values[0],
-            marker='o', mfc=color, mec=color, **mapkw)
-    ax.plot(df.lon.values[-1], df.lat.values[-1],
-            marker='o', mfc='w', mec=color, **mapkw)
+    ax.plot(
+        df.lon.values[0], df.lat.values[0], marker="o", mfc=color, mec=color, **mapkw
+    )
+    ax.plot(
+        df.lon.values[-1], df.lat.values[-1], marker="o", mfc="w", mec=color, **mapkw
+    )
     return ax

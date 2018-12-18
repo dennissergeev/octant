@@ -8,20 +8,18 @@ from .decor import pbar
 from .params import CATS
 
 
-SUBSETS = [i for i in CATS.keys() if i != 'unknown']
-DENSITY_TYPES = ['point', 'track', 'genesis', 'lysis']
+SUBSETS = [i for i in CATS.keys() if i != "unknown"]
+DENSITY_TYPES = ["point", "track", "genesis", "lysis"]
 
 
 def _exclude_by_first_day(df, m, d):
     """Check if OctantTrack starts on certain day and month."""
-    return not ((df.time.dt.month[0] == m).any()
-                and (df.time.dt.day[0] == d).any())
+    return not ((df.time.dt.month[0] == m).any() and (df.time.dt.day[0] == d).any())
 
 
 def _exclude_by_last_day(df, m, d):
     """Check if OctantTrack ends on certain day and month."""
-    return not ((df.time.dt.month[-1] == m).any()
-                and (df.time.dt.day[-1] == d).any())
+    return not ((df.time.dt.month[-1] == m).any() and (df.time.dt.day[-1] == d).any())
 
 
 def calc_all_dens(tr_obj, lon2d, lat2d, subsets=SUBSETS, **kwargs):
@@ -46,20 +44,19 @@ def calc_all_dens(tr_obj, lon2d, lat2d, subsets=SUBSETS, **kwargs):
        4d array with dimensions (subset, dens_type, latitude, longitude)
 
     """
-    subset_dim = xr.DataArray(name='subset', dims=('subset'), data=SUBSETS)
-    dens_dim = xr.DataArray(name='dens_type', dims=('dens_type'),
-                            data=DENSITY_TYPES)
+    subset_dim = xr.DataArray(name="subset", dims=("subset"), data=SUBSETS)
+    dens_dim = xr.DataArray(name="dens_type", dims=("dens_type"), data=DENSITY_TYPES)
     list1 = []
-    for subset in pbar(subsets, leave=False, desc='subsets'):
+    for subset in pbar(subsets, leave=False, desc="subsets"):
         list2 = []
-        for by in pbar(DENSITY_TYPES, leave=False, desc='density_types'):
+        for by in pbar(DENSITY_TYPES, leave=False, desc="density_types"):
             list2.append(tr_obj.density(lon2d, lat2d, by=by, subset=subset, **kwargs))
         list1.append(xr.concat(list2, dim=dens_dim))
     da = xr.concat(list1, dim=subset_dim)
-    return da.rename('density')
+    return da.rename("density")
 
 
-def bin_count_tracks(tr_obj, start_year, n_winters, by='M'):
+def bin_count_tracks(tr_obj, start_year, n_winters, by="M"):
     """
     Take `octant.TrackRun` and count cyclone tracks by month or by winter.
 
@@ -78,18 +75,16 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by='M'):
         Binned counts of shape (N,)
 
     """
-    if by.upper() == 'M':
+    if by.upper() == "M":
         counter = np.zeros(12, dtype=int)
-        for _, df in pbar(tr_obj.groupby('track_idx'),
-                          leave=False, desc='tracks'):
+        for _, df in pbar(tr_obj.groupby("track_idx"), leave=False, desc="tracks"):
             track_months = df.time.dt.month.unique()
             for m in track_months:
                 counter[m - 1] += 1
-    if by.upper() == 'W':
+    if by.upper() == "W":
         # winter
         counter = np.zeros(n_winters, dtype=int)
-        for _, df in pbar(tr_obj.groupby('track_idx'),
-                          leave=False, desc='tracks'):
+        for _, df in pbar(tr_obj.groupby("track_idx"), leave=False, desc="tracks"):
             track_months = df.time.dt.month.unique()
             track_years = df.time.dt.year.unique()
 

@@ -26,12 +26,15 @@ class TrackSettings:
         """
         self._fields = []
         if isinstance(fname_path, Path):
-            with fname_path.open('r') as f:
-                conf_list = [line for line in f.read().split('\n')
-                             if not line.startswith('#') and len(line) > 0]
+            with fname_path.open("r") as f:
+                conf_list = [
+                    line
+                    for line in f.read().split("\n")
+                    if not line.startswith("#") and len(line) > 0
+                ]
             for line in conf_list:
-                if not line.startswith('#'):
-                    k, v = line.split('=')
+                if not line.startswith("#"):
+                    k, v = line.split("=")
                     self._fields.append(k)
                     try:
                         self.__dict__.update({k: int(v)})
@@ -58,7 +61,7 @@ class TrackSettings:
     @property
     def extent(self):
         """List of lon1, lon2, lat1, lat2 showing the region used for tracking."""
-        extent_keys = ['lon1', 'lon2', 'lat1', 'lat2']
+        extent_keys = ["lon1", "lon2", "lat1", "lat2"]
         extent = []
         for k in extent_keys:
             try:
@@ -71,13 +74,11 @@ class TrackSettings:
         return len(self._fields)
 
     def __repr__(self):  # noqa
-        return ('Settings used for '
-                f'PMC tracking algorithm ({len(self)})')
+        return "Settings used for " f"PMC tracking algorithm ({len(self)})"
 
     def __str__(self):  # noqa
-        summary = '\n'.join([f'{k} = {getattr(self, k, None)}'
-                             for k in self._fields])
-        return f'Settings used for PMC tracking algorithm:\n\n{summary}'
+        summary = "\n".join([f"{k} = {getattr(self, k, None)}" for k in self._fields])
+        return f"Settings used for PMC tracking algorithm:\n\n{summary}"
 
     def to_dict(self):
         """Convert TrackSettings to a dictionary."""
