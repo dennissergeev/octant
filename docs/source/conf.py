@@ -216,17 +216,16 @@ autodoc_default_options = {
 # nbsphinx linking
 examples_src_dir = '../../examples'
 examples_doc_dir = 'examples'
-examples_toctree = """
-.. toctree::
-   :maxdepth: 1"""
+examples_header = '_index_header_rst'
 
 for nb_f in glob(os.path.join(examples_doc_dir, '*.ipynb')):
     if os.path.islink(nb_f):
         os.unlink(nb_f)
 
-with open(os.path.join(examples_doc_dir, 'index.rst'), 'a') as fw:
-    fw.write(examples_toctree)
-    fw.write('\n\n')
+with open(os.path.join(examples_doc_dir, 'index.rst'), 'w') as fw:
+    with open(os.path.join(examples_doc_dir, examples_header), 'r') as fr:
+        fw.write(fr.read())
+    fw.write('\n')
     for nb_f in glob(os.path.join(examples_src_dir, '*.ipynb')):
         _bn = os.path.basename(nb_f)
         if _bn.startswith('Untitled'):
