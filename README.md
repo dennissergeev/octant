@@ -24,11 +24,6 @@ Plotting examples also require the `cartopy` package
 conda install -c dennissergeev octant
 ```
 
-### With pip
-```bash
-pip install octant
-```
-
 ### From source
 ```bash
 git clone https://github.com/dennissergeev/octant.git
