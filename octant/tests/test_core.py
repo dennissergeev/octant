@@ -94,6 +94,42 @@ def test_categorise(trackrun):
     assert trackrun.size("strong") == 1
 
 
+def test_classify(trackrun):
+    """Use cached TrackRun instance and test classify() method."""
+    conds = [
+        ("basic", [lambda ot: ot.lifetime_h >= 6]),
+        (
+            "moderate",
+            [
+                lambda ot: (ot.vortex_type != 0).sum() / ot.shape[0] < 0.2,
+                lambda ot: ot.gen_lys_dist_km > 300.0,
+            ],
+        ),
+    ]
+    trackrun.classify(conds, inclusive=False)
+    assert trackrun.is_categorised
+    assert trackrun.size("basic") == 32
+    assert trackrun.size("moderate") == 11
+
+
+def test_classify_incl(trackrun):
+    """Use cached TrackRun instance and test classify() method with inclusive=True."""
+    conds = [
+        ("basic", [lambda ot: ot.lifetime_h >= 6]),
+        (
+            "moderate",
+            [
+                lambda ot: (ot.vortex_type != 0).sum() / ot.shape[0] < 0.2,
+                lambda ot: ot.gen_lys_dist_km > 300.0,
+            ],
+        ),
+    ]
+    trackrun.classify(conds, inclusive=True)
+    assert trackrun.is_categorised
+    assert trackrun.size("basic") == 31
+    assert trackrun.size("moderate") == 10
+
+
 def test_conf(trackrun):
     """Use cached TrackRun instance and check the configuration attribute."""
     assert hasattr(trackrun, "conf")

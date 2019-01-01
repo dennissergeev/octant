@@ -14,6 +14,12 @@ class MissingConfWarning(OctantWarning):
     pass
 
 
+class DeprecatedWarning(OctantWarning):
+    """Warning for a deprecated feature."""
+
+    pass
+
+
 class OctantError(Exception):
     """Base class for errors in octant package."""
 

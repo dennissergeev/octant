@@ -90,7 +90,7 @@ class ReprTrackRun:
         cells = []
         if self.trackrun.is_categorised:
             cells.append('<tr class="octant">')
-            cells.append(f'<td rowspan="{len(self.trackrun.cats)+1}">Categories</td>')
+            cells.append(f'<td rowspan="{len(self.trackrun._cats)+1}">Categories</td>')
             cells.append('<tr class="octant">')
             cells.append(
                 '<td class="octant octant-word-cell"></td>'
@@ -98,7 +98,7 @@ class ReprTrackRun:
             )
             cells.append("</tr>")
             cells.append("</tr>")
-            for cat_label in self.trackrun.cats.keys():
+            for cat_label in self.trackrun._cats.keys():
                 if cat_label != "unknown":
                     cells.append('<tr class="octant">')
                     cells.append(
@@ -161,12 +161,10 @@ class ReprTrackRun:
         if self.trackrun.is_categorised:
             summary.append("\nCategories:")
             summary.append("         {:>8d} in total".format(self.trackrun.size()))
-            for cat_label in self.trackrun.cats.keys():
+            for cat_label in self.trackrun._cats.keys():
                 if cat_label != "unknown":
                     summary.append(
-                        "of which {:>8d} are {}".format(
-                            self.trackrun.size(cat_label), cat_label
-                        )
+                        "of which {:>8d} are {}".format(self.trackrun.size(cat_label), cat_label)
                     )
 
         if self.trackrun.sources:

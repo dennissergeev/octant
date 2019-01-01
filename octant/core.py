@@ -11,7 +11,7 @@ import pandas as pd
 import xarray as xr
 
 from .decor import ReprTrackRun, pbar
-from .exceptions import ArgumentError, GridError, LoadError, MissingConfWarning
+from .exceptions import ArgumentError, DeprecatedWarning, GridError, LoadError, MissingConfWarning
 from .misc import _exclude_by_first_day, _exclude_by_last_day
 from .params import ARCH_KEY, CATS, COLUMNS, HOUR, M2KM
 from .parts import TrackSettings
@@ -104,10 +104,7 @@ class OctantTrack(pd.DataFrame):
         """Distance between genesis and lysis of the cyclone track in km."""
         return (
             great_circle(
-                self.lonlat[0, 0],
-                self.lonlat[-1, 0],
-                self.lonlat[0, 1],
-                self.lonlat[-1, 1],
+                self.lonlat[0, 0], self.lonlat[-1, 0], self.lonlat[0, 1], self.lonlat[-1, 1]
             )
             * M2KM
         )
@@ -246,9 +243,7 @@ class TrackRun:
         """Size of subset of tracks."""
         return self[subset].index.get_level_values(0).to_series().nunique()
 
-    def load_data(
-        self, dirname, columns=COLUMNS, primary_only=True, conf_file=None, scale_vo=1e-3
-    ):
+    def load_data(self, dirname, columns=COLUMNS, primary_only=True, conf_file=None, scale_vo=1e-3):
         """
         Read tracking results from a directory into `TrackRun.data` attribute.
 
@@ -291,11 +286,7 @@ class TrackRun:
 
         # Load the tracks
         self.columns = columns
-        load_kw = {
-            "delimiter": r"\s+",  # noqa
-            "names": self.columns,
-            "parse_dates": ["time"],
-        }
+        load_kw = {"delimiter": r"\s+", "names": self.columns, "parse_dates": ["time"]}  # noqa
         _data = []
         for fname in self.filelist:
             _data.append(OctantTrack.from_df(pd.read_csv(fname, **load_kw)))
@@ -349,9 +340,7 @@ class TrackRun:
                 df = pd.DataFrame(columns=self.columns, index=self.data.index)
             store.put(ARCH_KEY, df)
             metadata = {
-                k: v
-                for k, v in self.__dict__.items()
-                if k not in ["data", "filelist", "conf"]
+                k: v for k, v in self.__dict__.items() if k not in ["data", "filelist", "conf"]
             }
             metadata["conf"] = getattr(self.conf, "to_dict", lambda: {})()
             store.get_storer(ARCH_KEY).attrs.metadata = metadata
@@ -373,8 +362,7 @@ class TrackRun:
         new_track_idx = new_track_idx.ne(new_track_idx.shift()).cumsum() - 1
 
         mux = pd.MultiIndex.from_arrays(
-            [new_track_idx, new_data.index.get_level_values(1)],
-            names=new_data.index.names,
+            [new_track_idx, new_data.index.get_level_values(1)], names=new_data.index.names
         )
         self.data = new_data.set_index(mux)
 
@@ -511,10 +499,10 @@ class TrackRun:
             Percentile to define strong category of cyclones
             E.g. 95 means the top 5% strongest cyclones.
         """
+        warnings.warn("Use the new classify() function", DeprecatedWarning)
+        self.data.cat = 0  # Reset categories
         if filt_by_percentile and filt_by_vort:
-            raise ArgumentError(
-                ("Either filt_by_percentile or filt_by_vort" "should be on")
-            )
+            raise ArgumentError(("Either filt_by_percentile or filt_by_vort" "should be on"))
         # Save filtering params just in case
         self._cat_params = {k: v for k, v in locals().items() if k != "self"}
         # 0. Prepare mask for spatial filtering
@@ -537,7 +525,6 @@ class TrackRun:
                     inner_idx &= lat2d >= self.conf.lat1
                 if getattr(self.conf, "lat2", None):
                     inner_idx &= lat2d <= self.conf.lat2
-                boundary_mask = np.zeros_like(lon2d)
                 boundary_mask[~inner_idx] = 1.0
             self.themask = ((boundary_mask == 1.0) | (l_mask == 1.0)) * 1.0
             themask_c = self.themask.astype("double", order="C")
@@ -555,10 +542,7 @@ class TrackRun:
             if (
                 basic_flag
                 and filt_by_mask
-                and mask_tracks(
-                    themask_c, lon2d_c, lat2d_c, ot.lonlat_c, coast_rad * 1e3
-                )
-                > 0.5
+                and mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, coast_rad * 1e3) > 0.5
             ):
                 basic_flag = False
 
@@ -578,22 +562,75 @@ class TrackRun:
                     # 3.1. Filter by vorticity [Watanabe et al., 2016, p.2509]
                     if filt_by_vort:
                         if (ot.vo > vort_thresh1).any() or (
-                            ((ot.vo > vort_thresh0).sum() > 1)
-                            and (ot.lifetime_h > time_thresh1)
+                            ((ot.vo > vort_thresh0).sum() > 1) and (ot.lifetime_h > time_thresh1)
                         ):
                             self.data.loc[i, "cat"] = self._cats["strong"]
             else:
                 self.data.loc[i, "cat"] = self._cats["unknown"]
         if filt_by_percentile:
             # 3.2 Filter by percentile-defined vorticity threshold
-            vo_per_track = (
-                self["moderate"].groupby("track_idx").apply(lambda x: x.max_vort)
-            )
+            vo_per_track = self["moderate"].groupby("track_idx").apply(lambda x: x.max_vort)
             if len(vo_per_track) > 0:
                 vo_thresh = np.percentile(vo_per_track, strong_percentile)
                 strong = vo_per_track[vo_per_track > vo_thresh]
                 self.data.loc[strong.index, "cat"] = self._cats["strong"]
 
+        self.is_categorised = True
+
+    def classify(self, conditions, inclusive=True):
+        """
+        Classify the loaded tracks.
+
+        This is a more abstract and flexible method, replacing the hard-coded categorise() method.
+
+        Parameters
+        ----------
+        conditions: list
+            List of tuples containing a label the corresponding list of functions
+            each of which has OctantTrack as its only argument.
+            The method assigns numbers to the labels in the same order
+            that they are given, starting from number 1 (see examples).
+        inclusive: bool
+            If true, a higher category is a subset of lower category;
+            otherwise categories are independent.
+
+        Examples
+        --------
+        (also see example notebooks)
+        Simple check using OctantTrack properties
+        >>> from octant.core import TrackRun
+        >>> tr = TrackRun(path_to_directory_with_tracks)
+        >>> def myfun(x):
+                bool_flag = (x.vortex_type != 0).sum() / x.shape[0] < 0.2
+                return bool_flag
+        >>> conds = [
+            ('category_a', [lambda ot: ot.lifetime_h >= 6]),  # only 1 function checking lifetime
+            ('category_b', [myfun,
+                            lambda ot: ot.gen_lys_dist_km > 300.0])  # 2 functions
+        ]
+        >>> tr.classify(conds)
+        >>> tr.size('category_a'), tr.size('category_b')
+        31, 10
+
+        See Also
+        --------
+        octant.misc.check_by_mask
+        """
+        self.data.cat = 0
+        for i, ot in self._gb:
+            prev_flag = True
+            for num, (label, funcs) in enumerate(conditions, 1):
+                if inclusive:
+                    _flag = prev_flag
+                else:
+                    _flag = True
+
+                for func in funcs:
+                    _flag &= func(ot)
+                if _flag:
+                    self.data.loc[i, "cat"] = num
+                if inclusive:
+                    prev_flag = _flag
         self.is_categorised = True
 
     def match_tracks(
@@ -654,21 +691,15 @@ class TrackRun:
             # match against another TrackRun
             other_gb = others[subset].groupby("track_idx")
         else:
-            raise ArgumentError(
-                'Argument "others" ' f"has a wrong type: {type(others)}"
-            )
+            raise ArgumentError('Argument "others" ' f"has a wrong type: {type(others)}")
         match_pairs = []
         if method == "intersection":
             for idx, ot in pbar(sub_gb, desc="self tracks"):
-                for other_idx, other_ot in pbar(
-                    other_gb, desc="other tracks", leave=False
-                ):
+                for other_idx, other_ot in pbar(other_gb, desc="other tracks", leave=False):
                     times = other_ot.time.values
                     time_match_thresh = time_frac_thresh * (times[-1] - times[0]) / HOUR
 
-                    intersect = pd.merge(
-                        other_ot, ot, how="inner", left_on="time", right_on="time"
-                    )
+                    intersect = pd.merge(other_ot, ot, how="inner", left_on="time", right_on="time")
                     n_match_times = intersect.shape[0]
                     if n_match_times > 0:
                         _tstep_h = intersect.time.diff().values[-1] / HOUR
@@ -702,15 +733,10 @@ class TrackRun:
                         #            .interpolate(method='values')
                         #            .loc[ts.index])[ll]
                         tmp_df2 = pd.DataFrame(
-                            data={"lon": np.nan, "lat": np.nan, "time": df2.time},
-                            index=df2.index,
+                            data={"lon": np.nan, "lat": np.nan, "time": df2.time}, index=df2.index
                         )
                         new_df1 = (
-                            pd.concat(
-                                [df1[[*ll, "time"]], tmp_df2],
-                                ignore_index=True,
-                                keys="time",
-                            )
+                            pd.concat([df1[[*ll, "time"]], tmp_df2], ignore_index=True, keys="time")
                             .set_index("time")
                             .sort_index()
                             .interpolate(method="values")
@@ -746,13 +772,9 @@ class TrackRun:
             dist_matrix = np.full((len(sub_gb), len(other_gb)), 9e20)
             for i, (_, ct) in pbar(enumerate(sub_gb), desc="self tracks"):
                 x1, y1, t1 = ct.coord_view
-                for j, (_, other_ct) in pbar(
-                    enumerate(other_gb), desc="other tracks", leave=False
-                ):
+                for j, (_, other_ct) in pbar(enumerate(other_gb), desc="other tracks", leave=False):
                     x2, y2, t2 = other_ct.coord_view
-                    dist_matrix[i, j] = distance_metric(
-                        x1, y1, t1, x2, y2, t2, beta=float(beta)
-                    )
+                    dist_matrix[i, j] = distance_metric(x1, y1, t1, x2, y2, t2, beta=float(beta))
             for i, idx1 in enumerate(np.nanargmin(dist_matrix, axis=0)):
                 for j, idx2 in enumerate(np.nanargmin(dist_matrix, axis=1)):
                     if i == idx2 and j == idx1:
@@ -807,12 +829,8 @@ class TrackRun:
         lon2d_c = lon2d.astype("double", order="C")
         lat2d_c = lat2d.astype("double", order="C")
         # Prepare coordinates for output
-        xlon = xr.IndexVariable(
-            dims="longitude", data=lon2d[0, :], attrs={"units": "degrees_east"}
-        )
-        xlat = xr.IndexVariable(
-            dims="latitude", data=lat2d[:, 0], attrs={"units": "degrees_north"}
-        )
+        xlon = xr.IndexVariable(dims="longitude", data=lon2d[0, :], attrs={"units": "degrees_east"})
+        xlat = xr.IndexVariable(dims="latitude", data=lat2d[:, 0], attrs={"units": "degrees_north"})
         # Select subset
         sub_df = self[subset]
 
