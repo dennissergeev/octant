@@ -602,8 +602,8 @@ class TrackRun:
 
         Examples
         --------
-        (also see example notebooks)
         Simple check using OctantTrack properties
+
         >>> from octant.core import TrackRun
         >>> tr = TrackRun(path_to_directory_with_tracks)
         >>> def myfun(x):
@@ -617,6 +617,8 @@ class TrackRun:
         >>> tr.classify(conds)
         >>> tr.size('category_a'), tr.size('category_b')
         31, 10
+
+        For more examples, see example notebooks.
 
         See Also
         --------
