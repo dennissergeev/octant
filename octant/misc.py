@@ -5,10 +5,9 @@ import numpy as np
 import xarray as xr
 
 from .decor import pbar
-from .params import CATS
 from .utils import mask_tracks
 
-
+CATS = {"unknown": 0, "basic": 1, "moderate": 2, "strong": 3}
 SUBSETS = [i for i in CATS.keys() if i != "unknown"]
 DENSITY_TYPES = ["point", "track", "genesis", "lysis"]
 

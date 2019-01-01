@@ -13,7 +13,7 @@ import xarray as xr
 from .decor import ReprTrackRun, pbar
 from .exceptions import ArgumentError, DeprecatedWarning, GridError, LoadError, MissingConfWarning
 from .misc import _exclude_by_first_day, _exclude_by_last_day
-from .params import ARCH_KEY, CATS, COLUMNS, HOUR, M2KM
+from .params import ARCH_KEY, COLUMNS, HOUR, M2KM
 from .parts import TrackSettings
 from .utils import (
     distance_metric,
@@ -168,7 +168,6 @@ class TrackRun:
     """
 
     _mux_names = ["track_idx", "row_idx"]
-    _cats = CATS
 
     def __init__(self, dirname=None, columns=COLUMNS):
         """
@@ -189,7 +188,9 @@ class TrackRun:
         self.data = OctantTrack(index=mux, columns=self.columns)
         self.filelist = []
         self.sources = []
+        self._cats = {"unknown": 0}
         self.is_categorised = False
+        self._cat_inclusive = False
         # self._density = None
         if isinstance(self.dirname, Path):
             # Read all files and store in self.all
@@ -232,7 +233,10 @@ class TrackRun:
         if subset in [slice(None), None, "all"]:
             return self.data
         else:
-            return self.data[self.data.cat >= self._cats[subset]]
+            if self._cat_inclusive:
+                return self.data[self.data.cat >= self._cats[subset]]
+            else:
+                return self.data[self.data.cat == self._cats[subset]]
 
     @property
     def _gb(self):
@@ -500,6 +504,8 @@ class TrackRun:
             E.g. 95 means the top 5% strongest cyclones.
         """
         warnings.warn("Use the new classify() function", DeprecatedWarning)
+        self._cats.update({"basic": 1, "moderate": 2, "strong": 3})
+        self._cat_inclusive = True
         self.data.cat = 0  # Reset categories
         if filt_by_percentile and filt_by_vort:
             raise ArgumentError(("Either filt_by_percentile or filt_by_vort" "should be on"))
@@ -617,6 +623,8 @@ class TrackRun:
         octant.misc.check_by_mask
         """
         self.data.cat = 0
+        self._cats.update({label: num for num, (label, _) in enumerate(conditions, 1)})
+        self._cat_inclusive = inclusive
         for i, ot in self._gb:
             prev_flag = True
             for num, (label, funcs) in enumerate(conditions, 1):
