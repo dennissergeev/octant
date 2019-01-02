@@ -1,6 +1,7 @@
 # Project-specific
 octant/utils.c
 docs/source/examples/*.ipynb
+docs/source/examples/index.rst
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
