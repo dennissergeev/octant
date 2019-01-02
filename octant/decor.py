@@ -1,34 +1,35 @@
 # -*- coding: utf-8 -*-
 """Bells and whistles."""
 # This module is temporarily disabled
-
-# global DISABLE_TQDM
-# TODO: global runtime switch
-DISABLE_TQDM = True
+from . import RUNTIME
 
 
-def pbar(obj, **tqdm_kw):
-    """Empty progress bar."""
-    return obj
+def get_pbar():
+    """Get progress bar if the run-time option is enabled."""
+    # noqa
+    def _pbar(obj, **tqdm_kw):
+        """Empty progress bar."""
+        return obj
 
-
-if not DISABLE_TQDM:
-    try:
-        # If tqdm is installed
+    if RUNTIME.enable_progress_bar:
         try:
-            # Check if it's Jupyter Notebook
-            ipy_str = str(type(get_ipython()))
-            if "zmqshell" in ipy_str.lower() and False:
-                from tqdm import tqdm_notebook as tqdm
-            else:
+            # If tqdm is installed
+            try:
+                # Check if it's Jupyter Notebook
+                ipy_str = str(type(get_ipython()))
+                if "zmqshell" in ipy_str.lower():
+                    from tqdm import tqdm_notebook as tqdm
+                else:
+                    from tqdm import tqdm
+            except NameError:
                 from tqdm import tqdm
-        except NameError:
-            from tqdm import tqdm
-        from functools import partial
+            from functools import partial
 
-        pbar = partial(tqdm, leave=False, disable=DISABLE_TQDM)  # noqa
-    except ImportError:
-        pass
+            return partial(tqdm, leave=False)  # noqa
+        except ImportError:
+            return _pbar
+    else:
+        return _pbar
 
 
 class ReprTrackRun:

@@ -4,7 +4,7 @@ import numpy as np
 
 import xarray as xr
 
-from .decor import pbar
+from .decor import get_pbar
 from .utils import mask_tracks
 
 CATS = {"unknown": 0, "basic": 1, "moderate": 2, "strong": 3}
@@ -44,6 +44,8 @@ def calc_all_dens(tr_obj, lon2d, lat2d, subsets=SUBSETS, **kwargs):
        4d array with dimensions (subset, dens_type, latitude, longitude)
 
     """
+    pbar = get_pbar()
+
     subset_dim = xr.DataArray(name="subset", dims=("subset"), data=SUBSETS)
     dens_dim = xr.DataArray(name="dens_type", dims=("dens_type"), data=DENSITY_TYPES)
     list1 = []
@@ -75,6 +77,8 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by="M"):
         Binned counts of shape (N,)
 
     """
+    pbar = get_pbar()
+
     if by.upper() == "M":
         counter = np.zeros(12, dtype=int)
         for _, df in pbar(tr_obj.groupby("track_idx"), leave=False, desc="tracks"):

@@ -10,7 +10,7 @@ import pandas as pd
 
 import xarray as xr
 
-from .decor import ReprTrackRun, pbar
+from .decor import ReprTrackRun, get_pbar
 from .exceptions import ArgumentError, DeprecatedWarning, GridError, LoadError, MissingConfWarning
 from .misc import _exclude_by_first_day, _exclude_by_last_day
 from .params import ARCH_KEY, COLUMNS, HOUR, M2KM
@@ -504,6 +504,7 @@ class TrackRun:
             E.g. 95 means the top 5% strongest cyclones.
         """
         warnings.warn("Use the new classify() function", DeprecatedWarning)
+        pbar = get_pbar()
         self._cats.update({"basic": 1, "moderate": 2, "strong": 3})
         self._cat_inclusive = True
         self.data.cat = 0  # Reset categories
@@ -687,6 +688,8 @@ class TrackRun:
         dist_matrix: numpy.ndarray
             2D array, returned if return_dist_matrix=True
         """
+        pbar = get_pbar()
+
         sub_gb = self[subset].groupby("track_idx")
         if len(sub_gb) == 0 or len(others) == 0:
             return []
