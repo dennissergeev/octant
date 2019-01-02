@@ -12,22 +12,28 @@ def get_pbar():
         return obj
 
     if RUNTIME.enable_progress_bar:
-        try:
-            # If tqdm is installed
-            try:
-                # Check if it's Jupyter Notebook
-                ipy_str = str(type(get_ipython()))
-                if "zmqshell" in ipy_str.lower():
-                    from tqdm import tqdm_notebook as tqdm
-                else:
-                    from tqdm import tqdm
-            except NameError:
-                from tqdm import tqdm
-            from functools import partial
+        from functools import partial
 
-            return partial(tqdm, leave=False)  # noqa
+        try:
+            # if fastprogress is installed
+            from fastprogress import progress_bar
+
+            return partial(progress_bar)
         except ImportError:
-            return _pbar
+            try:
+                # If tqdm is installed
+                try:
+                    # Check if it's Jupyter Notebook
+                    ipy_str = str(type(get_ipython()))
+                    if "zmqshell" in ipy_str.lower():
+                        from tqdm import tqdm_notebook as tqdm
+                    else:
+                        from tqdm import tqdm
+                except NameError:
+                    from tqdm import tqdm
+                return partial(tqdm)
+            except ImportError:
+                return _pbar
     else:
         return _pbar
 

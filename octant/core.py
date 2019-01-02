@@ -451,6 +451,8 @@ class TrackRun:
         """
         Classify the loaded tracks.
 
+        .. deprecated:: 0.0.18
+
         Criteria:
          - lifetime
          - proximity to land or domain boundaries
@@ -503,7 +505,7 @@ class TrackRun:
             Percentile to define strong category of cyclones
             E.g. 95 means the top 5% strongest cyclones.
         """
-        warnings.warn("Use the new classify() function", DeprecatedWarning)
+        warnings.warn("Use the new classify() method", DeprecatedWarning)
         pbar = get_pbar()
         self._cats.update({"basic": 1, "moderate": 2, "strong": 3})
         self._cat_inclusive = True
@@ -538,7 +540,7 @@ class TrackRun:
             lon2d_c = lon2d.astype("double", order="C")
             lat2d_c = lat2d.astype("double", order="C")
 
-        for i, ot in pbar(self._gb, desc="tracks"):
+        for i, ot in pbar(self._gb):  # , desc="tracks"):
             basic_flag = True
             moderate_flag = True
             # 1. Minimal filter
@@ -625,10 +627,11 @@ class TrackRun:
         --------
         octant.misc.check_by_mask
         """
+        pbar = get_pbar()
         self.data.cat = 0
         self._cats.update({label: num for num, (label, _) in enumerate(conditions, 1)})
         self._cat_inclusive = inclusive
-        for i, ot in self._gb:
+        for i, ot in pbar(self._gb):
             prev_flag = True
             for num, (label, funcs) in enumerate(conditions, 1):
                 if inclusive:
@@ -707,8 +710,8 @@ class TrackRun:
             raise ArgumentError('Argument "others" ' f"has a wrong type: {type(others)}")
         match_pairs = []
         if method == "intersection":
-            for idx, ot in pbar(sub_gb, desc="self tracks"):
-                for other_idx, other_ot in pbar(other_gb, desc="other tracks", leave=False):
+            for idx, ot in pbar(sub_gb):  # , desc="self tracks"):
+                for other_idx, other_ot in pbar(other_gb, leave=False):  # , desc="other tracks"):
                     times = other_ot.time.values
                     time_match_thresh = time_frac_thresh * (times[-1] - times[0]) / HOUR
 
@@ -730,9 +733,9 @@ class TrackRun:
             # TODO: explain
             ll = ["lon", "lat"]
             match_pairs = []
-            for other_idx, other_ct in pbar(other_gb, desc="other tracks"):
+            for other_idx, other_ct in pbar(other_gb):  # , desc="other tracks"):
                 candidates = []
-                for idx, ct in pbar(sub_gb, leave=False, desc="self tracks"):
+                for idx, ct in pbar(sub_gb, leave=False):  # , desc="self tracks"):
                     if interpolate_to == "other":
                         df1, df2 = ct.copy(), other_ct
                     elif interpolate_to == "self":
@@ -783,9 +786,9 @@ class TrackRun:
             sub_indices = list(sub_gb.indices.keys())
             other_indices = list(other_gb.indices.keys())
             dist_matrix = np.full((len(sub_gb), len(other_gb)), 9e20)
-            for i, (_, ct) in pbar(enumerate(sub_gb), desc="self tracks"):
+            for i, (_, ct) in pbar(enumerate(sub_gb)):  # , desc="self tracks"):
                 x1, y1, t1 = ct.coord_view
-                for j, (_, other_ct) in pbar(enumerate(other_gb), desc="other tracks", leave=False):
+                for j, (_, other_ct) in pbar(enumerate(other_gb), leave=False):
                     x2, y2, t2 = other_ct.coord_view
                     dist_matrix[i, j] = distance_metric(x1, y1, t1, x2, y2, t2, beta=float(beta))
             for i, idx1 in enumerate(np.nanargmin(dist_matrix, axis=0)):

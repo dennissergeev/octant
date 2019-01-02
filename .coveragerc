@@ -8,7 +8,7 @@ include = octant/*
 include = octant/*
 omit =
     */setup.py
-    */version.py
+    */_version.py
     docs/*
     octant/tests/*
     *__init__*
