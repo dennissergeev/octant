@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """Miscellanea."""
+from collections.abc import Iterable
 import numpy as np
 
 import xarray as xr
 
+from .exceptions import ArgumentError
 from .decor import get_pbar
 from .utils import mask_tracks
 
-CATS = {"unknown": 0, "basic": 1, "moderate": 2, "strong": 3}
-SUBSETS = [i for i in CATS.keys() if i != "unknown"]
 DENSITY_TYPES = ["point", "track", "genesis", "lysis"]
 
 
@@ -22,9 +22,9 @@ def _exclude_by_last_day(df, m, d):
     return not ((df.time.dt.month[-1] == m).any() and (df.time.dt.day[-1] == d).any())
 
 
-def calc_all_dens(tr_obj, lon2d, lat2d, subsets=SUBSETS, **kwargs):
+def calc_all_dens(tr_obj, lon2d, lat2d, subsets=None, density_types=DENSITY_TYPES, **kwargs):
     """
-    Calculate all types of cyclone density for all SUBSETS of TrackRun.
+    Calculate all types of cyclone density for subsets of TrackRun.
 
     Parameters
     ----------
@@ -32,8 +32,11 @@ def calc_all_dens(tr_obj, lon2d, lat2d, subsets=SUBSETS, **kwargs):
         2D array of longitudes
     lat2d: numpy.ndarray
         2D array of latitudes
-    subsets: list
-        Subsets of `TrackRun` to process
+    subsets: list, optional
+        Subsets of `TrackRun` to process. By default, all subsets are processed.
+        If `TrackRun` is categorised, "unknown" subset is omitted.
+    density_types: list, optional
+        Types of cyclone density
     **kwargs: dict
         Keyword arguments passed to `octant.core.TrackRun.density()`.
         Should not include `subset` and `by` keywords, because they are passed separately.
@@ -46,12 +49,21 @@ def calc_all_dens(tr_obj, lon2d, lat2d, subsets=SUBSETS, **kwargs):
     """
     pbar = get_pbar()
 
-    subset_dim = xr.DataArray(name="subset", dims=("subset"), data=SUBSETS)
-    dens_dim = xr.DataArray(name="dens_type", dims=("dens_type"), data=DENSITY_TYPES)
+    if subsets is None:
+        if tr_obj.is_categorised:
+            subsets = [i for i in tr_obj._cats.keys() if i != "unknown"]
+        else:
+            subsets = ["unknown"]
+    else:
+        if not isinstance(subsets, Iterable) or isinstance(subsets, str):
+            raise ArgumentError("`subsets` should be a sequence of strings")
+
+    subset_dim = xr.DataArray(name="subset", dims=("subset"), data=subsets)
+    dens_dim = xr.DataArray(name="dens_type", dims=("dens_type"), data=density_types)
     list1 = []
-    for subset in pbar(subsets, leave=False):  # , desc="subsets"):
+    for subset in pbar(subsets):  # , desc="subsets"):
         list2 = []
-        for by in pbar(DENSITY_TYPES, leave=False):  # , desc="density_types"):
+        for by in pbar(density_types):  # , desc="density_types"):
             list2.append(tr_obj.density(lon2d, lat2d, by=by, subset=subset, **kwargs))
         list1.append(xr.concat(list2, dim=dens_dim))
     da = xr.concat(list1, dim=subset_dim)
