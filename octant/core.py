@@ -864,7 +864,7 @@ class TrackRun:
         elif method == "cell":
             # TODO: check cell-method and its units
             # TODO: make this check more flexible
-            if (np.diff(lon2d[0, :]) < 0).any() and (np.diff(lat2d[:, 0]) < 0).any():
+            if (np.diff(lon2d[0, :]) < 0).any() or (np.diff(lat2d[:, 0]) < 0).any():
                 raise GridError("Grid values must be in an ascending order")
             units = "1"
             if by == "track":
