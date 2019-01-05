@@ -85,13 +85,13 @@ def test_archive(trackrun):
         assert isinstance(another.conf, parts.TrackSettings)
 
 
-def test_categorise(trackrun):
-    """Use cached TrackRun instance and test categorise() method."""
-    trackrun.categorise()
-    assert trackrun.is_categorised
-    assert trackrun.size("basic") == 31
-    assert trackrun.size("moderate") == 10
-    assert trackrun.size("strong") == 1
+# def test_categorise(trackrun):
+#     """Use cached TrackRun instance and test categorise() method."""
+#     trackrun.categorise()
+#     assert trackrun.is_categorised
+#     assert trackrun.size("basic") == 31
+#     assert trackrun.size("moderate") == 10
+#     assert trackrun.size("strong") == 1
 
 
 def test_classify(trackrun):
@@ -140,7 +140,7 @@ def test_conf(trackrun):
 
 def test_match_bs2000(trackrun, ref_set):
     """Use cached TrackRun and tracks from ref_set to test match_tracks() method."""
-    subset = "moderate"
+    subset = "b"
     match_pairs, dm = trackrun.match_tracks(
         ref_set, subset=subset, method="bs2000", beta=50.0, return_dist_matrix=True
     )

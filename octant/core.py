@@ -259,6 +259,21 @@ class TrackRun:
         """Size of subset of tracks."""
         return self[subset].index.get_level_values(0).to_series().nunique()
 
+    def rename_cats(self, **mapping):
+        """
+        Rename categories of the TrackRun.
+
+        Parameters
+        ----------
+        mapping: dict
+            How to rename categories, {old_key: new_key}
+        """
+        for old_key, new_key in mapping.items():
+            try:
+                self._cats[new_key] = self._cats.pop(old_key)
+            except KeyError:
+                pass
+
     def load_data(
         self, dirname, columns=COLUMNS, wcard="vortrack*0001.txt", conf_file=None, scale_vo=1e-3
     ):
@@ -664,7 +679,7 @@ class TrackRun:
     def match_tracks(
         self,
         others,
-        subset="basic",
+        subset=None,
         method="simple",
         interpolate_to="other",
         thresh_dist=250.0,
@@ -680,7 +695,8 @@ class TrackRun:
         others: list or octant.core.TrackRun
             List of dataframes or a TrackRun instance
         subset: str, optional
-            Subset to match (basic|moderate|strong)
+            Subset (category) of TrackRun to match.
+            If not given, the matching is done for all categories.
         method: str, optional
             Method of matching (intersection|simple|bs2000)
         interpolate_to: str, optional
@@ -691,12 +707,12 @@ class TrackRun:
         time_frac_thresh: float, optional
             Fraction of a vortex lifetime used as a threshold in 'intersection'
             and 'simple' methods
-        beta: float, optional
-            Parameter used in 'bs2000' method
-            E.g. beta=100 corresponds to 10 m/s average steering wind
         return_dist_matrix: bool, optional
             Used when method='bs2000'. If True, the method returns a tuple
             of matching pairs and distance matrix used to calculate them
+        beta: float, optional
+            Parameter used in 'bs2000' method
+            E.g. beta=100 corresponds to 10 m/s average steering wind
         Returns
         -------
         match_pairs: list
@@ -705,6 +721,22 @@ class TrackRun:
         dist_matrix: numpy.ndarray
             2D array, returned if return_dist_matrix=True
         """
+        # Select subset
+        if subset is None:
+            result = {}
+            for subset_key in self._cats.keys():
+                result[subset_key] = self.match_tracks(
+                    others,
+                    subset=subset_key,
+                    method=method,
+                    interpolate_to=interpolate_to,
+                    thresh_dist=thresh_dist,
+                    time_frac_thresh=time_frac_thresh,
+                    return_dist_matrix=return_dist_matrix,
+                    beta=beta,
+                )
+            return result
+
         sub_gb = self[subset].gb
         if len(sub_gb) == 0 or len(others) == 0:
             return []
@@ -819,7 +851,7 @@ class TrackRun:
         lon2d,
         lat2d,
         by="point",
-        subset="basic",
+        subset=None,
         method="radius",
         r=222.0,
         exclude_first={"m": 10, "d": 1},
@@ -842,7 +874,8 @@ class TrackRun:
         by: str, optional
             Type of cyclone density (point|track|genesis|lysis)
         subset: str, optional
-            Subset to match (basic|moderate|strong)
+            Subset (category) of TrackRun to calculate density from.
+            If not given, the calculation is done for all categories.
         method: str, optional
             Method to calculate density (radius|cell)
         r: float, optional
@@ -853,14 +886,28 @@ class TrackRun:
         dens: xarray.DataArray
             Array of track density of shape (M, N) with useful metadata in attrs
         """
+        # Select subset
+        if subset is None:
+            result = {}
+            for subset_key in self._cats.keys():
+                result[subset_key] = self.density(
+                    lon2d,
+                    lat2d,
+                    by=by,
+                    subset=subset_key,
+                    method=method,
+                    r=r,
+                    exclude_first=exclude_first,
+                    exclude_last=exclude_last,
+                )
+            return result
+        sub_df = self[subset]
         # Prepare coordinates for cython
         lon2d_c = lon2d.astype("double", order="C")
         lat2d_c = lat2d.astype("double", order="C")
         # Prepare coordinates for output
         xlon = xr.IndexVariable(dims="longitude", data=lon2d[0, :], attrs={"units": "degrees_east"})
         xlat = xr.IndexVariable(dims="latitude", data=lat2d[:, 0], attrs={"units": "degrees_north"})
-        # Select subset
-        sub_df = self[subset]
 
         # Select method
         if method == "radius":
