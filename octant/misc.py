@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """Miscellanea."""
 from collections.abc import Iterable
+
 import numpy as np
 
 import xarray as xr
 
-from .exceptions import ArgumentError
 from .decor import get_pbar
+from .exceptions import ArgumentError
 from .utils import mask_tracks
 
 DENSITY_TYPES = ["point", "track", "genesis", "lysis"]

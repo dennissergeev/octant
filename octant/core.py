@@ -694,7 +694,6 @@ class TrackRun:
         dist_matrix: numpy.ndarray
             2D array, returned if return_dist_matrix=True
         """
-
         sub_gb = self[subset].groupby("track_idx")
         if len(sub_gb) == 0 or len(others) == 0:
             return []
