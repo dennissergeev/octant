@@ -3,6 +3,16 @@ Changelog
 
 .. default-role:: py:obj
 
+v0.0.19
+-------
+
+:Release: unreleased
+:Date: XXX
+
+* Add short-cut property `gb` to `OctantTrack` to group by track indices
+* Optimise keyword arguments in `TrackRun.load_data` and `TrackRun.__init__`
+
+
 
 v0.0.18
 -------

@@ -52,6 +52,11 @@ class OctantTrack(pd.DataFrame):
 
     _constructor_sliced = _OctantSeries
 
+    @property
+    def gb(self):
+        """Shortcut to group by track_idx index."""
+        return self.groupby("track_idx")
+
     @classmethod
     def from_df(cls, df):
         """Create OctantTrack from pandas.DataFrame."""
@@ -169,7 +174,7 @@ class TrackRun:
 
     _mux_names = ["track_idx", "row_idx"]
 
-    def __init__(self, dirname=None, columns=COLUMNS):
+    def __init__(self, dirname=None, columns=COLUMNS, **kwargs):
         """
         Initialise octant.core.TrackRun.
 
@@ -180,6 +185,8 @@ class TrackRun:
             If present, load the data during on init
         columns: sequence of str, optional
             List of column names. Should contain 'time' to parse datetimes.
+        kwargs: other keyword arguments
+            Parameters passed to load_data()
         """
         self.dirname = dirname
         self.conf = None
@@ -195,13 +202,13 @@ class TrackRun:
         if isinstance(self.dirname, Path):
             # Read all files and store in self.all
             # as a list of `pandas.DataFrame`s
-            self.load_data(self.dirname, columns=self.columns)
+            self.load_data(self.dirname, columns=self.columns, **kwargs)
         elif self.dirname is not None:
-            raise LoadError("dirname should be Path-like object")
+            raise LoadError("To load data, `dirname` should be Path-like object")
 
         if not self.data.empty:
             # Define time step
-            for (_, ot) in self._gb:
+            for (_, ot) in self.gb:
                 if ot.shape[0] > 1:
                     self.tstep_h = ot.time.diff().values[-1] / HOUR
                     break
@@ -244,15 +251,17 @@ class TrackRun:
         return get_pbar()
 
     @property
-    def _gb(self):
+    def gb(self):
         """Group by track index."""
-        return self.data.groupby("track_idx")
+        return self.data.gb
 
     def size(self, subset=None):
         """Size of subset of tracks."""
         return self[subset].index.get_level_values(0).to_series().nunique()
 
-    def load_data(self, dirname, columns=COLUMNS, primary_only=True, conf_file=None, scale_vo=1e-3):
+    def load_data(
+        self, dirname, columns=COLUMNS, wcard="vortrack*0001.txt", conf_file=None, scale_vo=1e-3
+    ):
         """
         Read tracking results from a directory into `TrackRun.data` attribute.
 
@@ -265,8 +274,9 @@ class TrackRun:
         conf_file: pathlib.Path, optional
             Path to the configuration file. If omitted, an attempt is
             made to find a .conf file in the `dirname` directory
-        primary_only: bool, optional
-            Load only "primary" vortices and skip the merged ones
+        wcard: str
+            Wildcard for files to read in. By default, loads only "primary" vortices
+            and skips merged. See PMCTRACK docs for more info.
         scale_vo: float, optional
             Scale vorticity values column to SI units (s-1)
             By default PMCTRACK writes out vorticity in (x10-3 s-1),
@@ -274,10 +284,11 @@ class TrackRun:
         """
         if not dirname.is_dir():
             raise LoadError(f"No such directory: {dirname}")
-        if primary_only:
-            wcard = "vortrack*0001.txt"
-        else:
-            wcard = "vortrack*.txt"
+        # deprecated...
+        # if primary_only:
+        #     wcard = "vortrack*0001.txt"
+        # else:
+        #     wcard = "vortrack*.txt"
         self.filelist = sorted([*dirname.glob(wcard)])
         self.sources.append(str(dirname))
 
@@ -544,7 +555,7 @@ class TrackRun:
             lon2d_c = lon2d.astype("double", order="C")
             lat2d_c = lat2d.astype("double", order="C")
 
-        for i, ot in self._pbar(self._gb):  # , desc="tracks"):
+        for i, ot in self._pbar(self.gb):  # , desc="tracks"):
             basic_flag = True
             moderate_flag = True
             # 1. Minimal filter
@@ -582,7 +593,7 @@ class TrackRun:
                 self.data.loc[i, "cat"] = self._cats["unknown"]
         if filt_by_percentile:
             # 3.2 Filter by percentile-defined vorticity threshold
-            vo_per_track = self["moderate"].groupby("track_idx").apply(lambda x: x.max_vort)
+            vo_per_track = self["moderate"].gb.apply(lambda x: x.max_vort)
             if len(vo_per_track) > 0:
                 vo_thresh = np.percentile(vo_per_track, strong_percentile)
                 strong = vo_per_track[vo_per_track > vo_thresh]
@@ -634,7 +645,7 @@ class TrackRun:
         self.data.cat = 0
         self._cats.update({label: num for num, (label, _) in enumerate(conditions, 1)})
         self._cat_inclusive = inclusive
-        for i, ot in self._pbar(self._gb):
+        for i, ot in self._pbar(self.gb):
             prev_flag = True
             for num, (label, funcs) in enumerate(conditions, 1):
                 if inclusive:
@@ -694,7 +705,7 @@ class TrackRun:
         dist_matrix: numpy.ndarray
             2D array, returned if return_dist_matrix=True
         """
-        sub_gb = self[subset].groupby("track_idx")
+        sub_gb = self[subset].gb
         if len(sub_gb) == 0 or len(others) == 0:
             return []
         if isinstance(others, list):
@@ -703,10 +714,10 @@ class TrackRun:
                 [OctantTrack.from_df(df) for df in others],
                 keys=range(len(others)),
                 names=self._mux_names,
-            ).groupby("track_idx")
+            ).gb
         elif isinstance(others, self.__class__):
             # match against another TrackRun
-            other_gb = others[subset].groupby("track_idx")
+            other_gb = others[subset].gb
         else:
             raise ArgumentError('Argument "others" ' f"has a wrong type: {type(others)}")
         match_pairs = []
@@ -878,17 +889,11 @@ class TrackRun:
             sub_data = sub_df.tridlonlat_c
         elif by == "genesis":
             sub_data = (
-                sub_df.groupby("track_idx")
-                .filter(_exclude_by_first_day, **exclude_first)
-                .xs(0, level="row_idx")
+                sub_df.gb.filter(_exclude_by_first_day, **exclude_first).xs(0, level="row_idx")
             ).lonlat_c
         elif by == "lysis":
             sub_data = (
-                self[subset]
-                .groupby("track_idx")
-                .tail(1)
-                .groupby("track_idx")
-                .filter(_exclude_by_last_day, **exclude_last)
+                self[subset].gb.tail(1).gb.filter(_exclude_by_last_day, **exclude_last)
             ).lonlat_c
 
         dens = xr.DataArray(

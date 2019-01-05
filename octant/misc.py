@@ -94,14 +94,14 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by="M"):
 
     if by.upper() == "M":
         counter = np.zeros(12, dtype=int)
-        for _, df in pbar(tr_obj.groupby("track_idx"), leave=False):  # , desc="tracks"):
+        for _, df in pbar(tr_obj.gb, leave=False):  # , desc="tracks"):
             track_months = df.time.dt.month.unique()
             for m in track_months:
                 counter[m - 1] += 1
     if by.upper() == "W":
         # winter
         counter = np.zeros(n_winters, dtype=int)
-        for _, df in pbar(tr_obj.groupby("track_idx"), leave=False):  # , desc="tracks"):
+        for _, df in pbar(tr_obj.gb, leave=False):  # , desc="tracks"):
             track_months = df.time.dt.month.unique()
             track_years = df.time.dt.year.unique()
 
