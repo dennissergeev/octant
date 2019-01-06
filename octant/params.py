@@ -7,3 +7,6 @@ M2KM = 1e-3
 
 COLUMNS = ["lon", "lat", "vo", "time", "area", "vortex_type"]  # , 'cat']
 ARCH_KEY = "trackrun"
+
+EARTH_RADIUS = 6_371_009.0  # in metres
+# NB in iris: 6367470 m

@@ -1,4 +1,4 @@
-# cython: language_level=3, boundscheck=False, wraparound=False
+# cython: language_level=3, boundscheck=True, wraparound=False
 """
 Part of the octant package.
 
@@ -9,8 +9,7 @@ import numpy as np
 cimport numpy as np
 from libc.math cimport pi, sin, cos, acos
 
-
-cdef double EARTH_RADIUS = 6371009.  # in metres
+from .params import EARTH_RADIUS
 
 
 cdef double _great_circle(double lon1,
@@ -95,13 +94,31 @@ cpdef double[:, ::1] point_density_cell(double[:, ::1] lon2d,
                                         double[:, ::1] lat2d,
                                         double[:, ::1] lonlat):
     """
-    Calculate density based on lon-lat boxes [WIP]
+    Calculate density in lon-lat grid cell boxes.
+
+    Parameters
+    ----------
+    lon2d: numpy.array
+        Array of longitudes of shape (M, N)
+    lat2d: numpy.array
+        Array of latitudes of shape (M, N)
+    lonlat: numpy.array
+        Array of track's longitude and latitude; of shape(P, 2)
+
+    Returns
+    -------
+    count: numpy.array
+        Cyclone point occurence in each grid cell
+
+    Note
+    ----
+    `lon2d` and `lat2d` define the boundaries of grid cells, not centres.
     """
     cdef int i, j, p
     cdef int jmax = lat2d.shape[0]-1
     cdef int imax = lon2d.shape[1]-1
     cdef int pmax = lonlat.shape[0]
-    cdef double[:, ::1] count = np.zeros([jmax+1, imax+1], dtype=np.double)
+    cdef double[:, ::1] count = np.zeros([jmax, imax], dtype=np.double)
 
     for p in range(pmax):
         for j in range(jmax):
@@ -114,33 +131,33 @@ cpdef double[:, ::1] point_density_cell(double[:, ::1] lon2d,
     return count
 
 
-cpdef double[:, ::1] point_density_rad(double[:, ::1] lon2d,
-                                       double[:, ::1] lat2d,
-                                       double[:, ::1] lonlat,
-                                       double rad):
-    """
-    Calculate density based on radius [WIP]
-    """
-    cdef int i, j, p
-    cdef int jmax = lat2d.shape[0]
-    cdef int imax = lon2d.shape[1]
-    cdef int pmax = lonlat.shape[0]
-    cdef double[:, ::1] count = np.zeros([jmax, imax], dtype=np.double)
-    for p in range(pmax):
-        for j in range(jmax):
-            for i in range(imax):
-                if _great_circle(lonlat[p, 0], lon2d[j, i],
-                                 lonlat[p, 1], lat2d[j, i]) <= rad:
-                    count[j, i] = count[j, i] + 1
-    return count
-
-
 cpdef double[:, ::1] track_density_cell(double[:, ::1] lon2d,
                                         double[:, ::1] lat2d,
                                         double[:, ::1] id_lon_lat):
+    """
+    Calculate cyclone track density in lon-lat grid cell boxes.
+
+    Parameters
+    ----------
+    lon2d: numpy.array
+        Array of longitudes of shape (M, N)
+    lat2d: numpy.array
+        Array of latitudes of shape (M, N)
+    id_lon_lat: numpy.array
+        Array of track's index, longitude, and latitude; of shape(P, 2)
+
+    Returns
+    -------
+    count: numpy.array
+        Cyclone occurence in each grid cell
+
+    Note
+    ----
+    `lon2d` and `lat2d` define the boundaries of grid cells, not centres.
+    """
     cdef int i, j, p
-    cdef int jmax = lat2d.shape[0]
-    cdef int imax = lon2d.shape[1]
+    cdef int jmax = lat2d.shape[0] - 1
+    cdef int imax = lon2d.shape[1] - 1
     cdef int pmax = id_lon_lat.shape[0]
     cdef int track_idx
     cdef int prev_track_idx
@@ -162,10 +179,38 @@ cpdef double[:, ::1] track_density_cell(double[:, ::1] lon2d,
     return count
 
 
+cpdef double[:, ::1] point_density_rad(double[:, ::1] lon2d,
+                                       double[:, ::1] lat2d,
+                                       double[:, ::1] lonlat,
+                                       double rad):
+    """
+    Calculate cyclone density within given radius from each grid point
+
+    TODO: account for double-counting!
+    """
+    cdef int i, j, p
+    cdef int jmax = lat2d.shape[0]
+    cdef int imax = lon2d.shape[1]
+    cdef int pmax = lonlat.shape[0]
+    cdef double[:, ::1] count = np.zeros([jmax, imax], dtype=np.double)
+    for p in range(pmax):
+        for j in range(jmax):
+            for i in range(imax):
+                if _great_circle(lonlat[p, 0], lon2d[j, i],
+                                 lonlat[p, 1], lat2d[j, i]) <= rad:
+                    count[j, i] = count[j, i] + 1
+    return count
+
+
 cpdef double[:, ::1] track_density_rad(double[:, ::1] lon2d,
                                        double[:, ::1] lat2d,
                                        double[:, ::1] id_lon_lat,
                                        double rad):
+    """
+    Calculate cyclone track density within given radius from each grid point
+
+    TODO: account for double-counting!
+    """
     cdef int i, j, p
     cdef int jmax = lat2d.shape[0]
     cdef int imax = lon2d.shape[1]

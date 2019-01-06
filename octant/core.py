@@ -12,6 +12,7 @@ import xarray as xr
 
 from .decor import ReprTrackRun, get_pbar
 from .exceptions import ArgumentError, DeprecatedWarning, GridError, LoadError, MissingConfWarning
+from .grid import cell_bounds, cell_centres  # , grid_cell_areas
 from .misc import _exclude_by_first_day, _exclude_by_last_day
 from .params import ARCH_KEY, COLUMNS, HOUR, M2KM
 from .parts import TrackSettings
@@ -721,7 +722,7 @@ class TrackRun:
         dist_matrix: numpy.ndarray
             2D array, returned if return_dist_matrix=True
         """
-        # Select subset
+        # Recursive call for each of the available categies
         if subset is None:
             result = {}
             for subset_key in self._cats.keys():
@@ -737,6 +738,7 @@ class TrackRun:
                 )
             return result
 
+        # Select subset
         sub_gb = self[subset].gb
         if len(sub_gb) == 0 or len(others) == 0:
             return []
@@ -848,14 +850,15 @@ class TrackRun:
 
     def density(
         self,
-        lon2d,
-        lat2d,
+        lon1d,
+        lat1d,
         by="point",
         subset=None,
         method="radius",
         r=222.0,
         exclude_first={"m": 10, "d": 1},
         exclude_last={"m": 4, "d": 30},
+        grid_centres=True,
     ):
         """
         Calculate different types of cyclone density for a given lon-lat grid.
@@ -867,10 +870,10 @@ class TrackRun:
 
         Parameters
         ----------
-        lon2d: numpy.ndarray
-            Longitude grid of shape (M, N)
-        lat2d: numpy.ndarray
-            Latitude grid of shape (M, N)
+        lon1d: numpy.ndarray
+            Longitude points array of shape (M,)
+        lat1d: numpy.ndarray
+            Latitude points array of shape (N,)
         by: str, optional
             Type of cyclone density (point|track|genesis|lysis)
         subset: str, optional
@@ -881,33 +884,65 @@ class TrackRun:
         r: float, optional
             Radius in km
             Used when method='radius'
+        exclude_first: dict, optional
+            Exclude start date (month, day)
+        exclude_last: dict, optional
+            Exclude end date (month, day)
+        grid_centres: bool, optional
+            If true, the function assumes that lon (M,) and lat (N,) arrays are grid centres
+            and calculates boundaries, arrays of shape (M+1,) and (N+1,) so that the density
+            values refer to centre points given.
+            If false, the density is calculated between grid points.
         Returns
         -------
         dens: xarray.DataArray
             Array of track density of shape (M, N) with useful metadata in attrs
         """
-        # Select subset
+        # Recursive call for each of the available categies
         if subset is None:
             result = {}
             for subset_key in self._cats.keys():
                 result[subset_key] = self.density(
-                    lon2d,
-                    lat2d,
+                    lon1d,
+                    lat1d,
                     by=by,
                     subset=subset_key,
                     method=method,
                     r=r,
                     exclude_first=exclude_first,
                     exclude_last=exclude_last,
+                    grid_centres=grid_centres,
                 )
             return result
+
+        # Redefine grid if necessary
+        if grid_centres:
+            # Input arrays are centres of grid cells, so cell boundaries need to be calculated
+            lon = cell_bounds(lon1d)
+            lat = cell_bounds(lat1d)
+            # Prepare coordinates for output
+            xlon = xr.IndexVariable(dims="longitude", data=lon1d, attrs={"units": "degrees_east"})
+            xlat = xr.IndexVariable(dims="latitude", data=lat1d, attrs={"units": "degrees_north"})
+        else:
+            # Input arrays are boundaries of grid cells, so cell centres need to be
+            # calculated for the output
+            lon, lat = lon1d, lat1d
+            # Prepare coordinates for output
+            xlon = xr.IndexVariable(
+                dims="longitude", data=cell_centres(lon1d), attrs={"units": "degrees_east"}
+            )
+            xlat = xr.IndexVariable(
+                dims="latitude", data=cell_centres(lat1d), attrs={"units": "degrees_north"}
+            )
+
+        # Create 2D mesh
+        lon2d, lat2d = np.meshgrid(lon, lat)
+
+        # Select subset
         sub_df = self[subset]
         # Prepare coordinates for cython
         lon2d_c = lon2d.astype("double", order="C")
         lat2d_c = lat2d.astype("double", order="C")
-        # Prepare coordinates for output
-        xlon = xr.IndexVariable(dims="longitude", data=lon2d[0, :], attrs={"units": "degrees_east"})
-        xlat = xr.IndexVariable(dims="latitude", data=lat2d[:, 0], attrs={"units": "degrees_north"})
 
         # Select method
         if method == "radius":
