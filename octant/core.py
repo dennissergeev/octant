@@ -12,7 +12,7 @@ import xarray as xr
 
 from .decor import ReprTrackRun, get_pbar
 from .exceptions import ArgumentError, DeprecatedWarning, GridError, LoadError, MissingConfWarning
-from .grid import cell_bounds, cell_centres  # , grid_cell_areas
+from .grid import cell_bounds, cell_centres, grid_cell_areas
 from .misc import _exclude_by_first_day, _exclude_by_last_day
 from .params import ARCH_KEY, COLUMNS, HOUR, M2KM
 from .parts import TrackSettings
@@ -854,11 +854,12 @@ class TrackRun:
         lat1d,
         by="point",
         subset=None,
-        method="radius",
+        method="cell",
         r=222.0,
         exclude_first={"m": 10, "d": 1},
         exclude_last={"m": 4, "d": 30},
         grid_centres=True,
+        weight_by_area=True,
     ):
         """
         Calculate different types of cyclone density for a given lon-lat grid.
@@ -893,6 +894,8 @@ class TrackRun:
             and calculates boundaries, arrays of shape (M+1,) and (N+1,) so that the density
             values refer to centre points given.
             If false, the density is calculated between grid points.
+        weight_by_area: bool, optional
+            Weight result by area of grid cells.
         Returns
         -------
         dens: xarray.DataArray
@@ -912,6 +915,7 @@ class TrackRun:
                     exclude_first=exclude_first,
                     exclude_last=exclude_last,
                     grid_centres=grid_centres,
+                    weight_by_area=weight_by_area,
                 )
             return result
 
@@ -978,8 +982,17 @@ class TrackRun:
                 self[subset].gb.tail(1).gb.filter(_exclude_by_last_day, **exclude_last)
             ).lonlat_c
 
+        data = cy_func(lon2d_c, lat2d_c, sub_data).base
+
+        if weight_by_area:
+            # calculate area in metres
+            area = grid_cell_areas(xlon.values, xlat.values)
+            data /= area
+            data *= 1e6  # convert to km^{-2}
+            units = "km-2"
+
         dens = xr.DataArray(
-            cy_func(lon2d_c, lat2d_c, sub_data).base,
+            data,
             name=f"{by}_density",
             attrs={"units": units, "subset": subset, "method": method},
             dims=("latitude", "longitude"),

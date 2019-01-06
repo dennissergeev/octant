@@ -1,4 +1,4 @@
-# cython: language_level=3, boundscheck=True, wraparound=False
+# cython: language_level=3, boundscheck=False, wraparound=False
 """
 Part of the octant package.
 
