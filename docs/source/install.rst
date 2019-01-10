@@ -27,6 +27,11 @@ The recommended installation method is via `conda
 
   conda install -c dennissergeev octant
 
+Latest nightly build::
+
+  conda install -c dennissergeev/label/nightly octant
+
+
 Alternative method: clone from Github
 ========================================
 

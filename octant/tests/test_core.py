@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import numpy.testing as npt
 
 from octant import core, parts
 
@@ -147,4 +148,4 @@ def test_match_bs2000(trackrun, ref_set):
     assert len(match_pairs) == 5
     assert dm.shape == (trackrun.size(subset), len(ref_set))
     actual_dm = np.load(REF_DM)
-    np.testing.assert_almost_equal(actual_dm, dm)
+    npt.assert_allclose(actual_dm, dm)

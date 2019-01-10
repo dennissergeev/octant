@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Auxiliary classes for octant package."""
-from pathlib import Path
+from .exceptions import LoadError
 
 
 class TrackSettings:
@@ -20,36 +20,39 @@ class TrackSettings:
 
         Parameters
         ----------
-        fname_path: pathlib.Path
+        fname_path: pathlib.Path, optional
             Path to `.conf` file with settings
             (usually is in the same folder as the tracking output)
         """
         self._fields = []
-        if isinstance(fname_path, Path):
-            with fname_path.open("r") as f:
-                conf_list = [
-                    line
-                    for line in f.read().split("\n")
-                    if not line.startswith("#") and len(line) > 0
-                ]
-            for line in conf_list:
-                if not line.startswith("#"):
-                    k, v = line.split("=")
-                    self._fields.append(k)
-                    try:
-                        self.__dict__.update({k: int(v)})
-                    except ValueError:
+        if fname_path is not None:
+            try:
+                with fname_path.open("r") as f:
+                    conf_list = [
+                        line
+                        for line in f.read().split("\n")
+                        if not line.startswith("#") and len(line) > 0
+                    ]
+                for line in conf_list:
+                    if not line.startswith("#"):
+                        k, v = line.split("=")
+                        self._fields.append(k)
                         try:
-                            self.__dict__.update({k: float(v)})
+                            self.__dict__.update({k: int(v)})
                         except ValueError:
-                            v = str(v).strip('"').strip("'")
-                            self.__dict__.update({k: v})
-                # try:
-                #    exec(line, None, self.__dict__)
-                # except SyntaxError:
-                #    k, v = line.split('=')
-                #    self.__dict__.update({k: str(v)})
-                #    self._fields.append(k)
+                            try:
+                                self.__dict__.update({k: float(v)})
+                            except ValueError:
+                                v = str(v).strip('"').strip("'")
+                                self.__dict__.update({k: v})
+                    # try:
+                    #    exec(line, None, self.__dict__)
+                    # except SyntaxError:
+                    #    k, v = line.split('=')
+                    #    self.__dict__.update({k: str(v)})
+                    #    self._fields.append(k)
+            except (FileNotFoundError, AttributeError):
+                raise LoadError("Check that `fname_path` is a correct Path and formatted correctly")
         self._fields = tuple(self._fields)
 
     def copy(self):
