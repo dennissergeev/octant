@@ -9,11 +9,13 @@ export VERSION=`python -c 'import octant; print(octant.__version__)'`
 conda build --no-test .
 PKG_FULL_NAME=`conda build --output .`
 # echo 'PKG_FULL_NAME='$PKG_FULL_NAME
-if [[ $VERSION == *"dirty"* ]]; then
+if [[ $VERSION == *"+"* ]]; then
     LABEL="nightly";
 else
     LABEL="main";
 fi;
+echo ""
 echo "label: $LABEL"
+echo "version: $VERSION"
 echo ""
 anaconda --token $CONDA_UPLOAD_TOKEN upload -u $USER -l $LABEL --force $PKG_FULL_NAME
