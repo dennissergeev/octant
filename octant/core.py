@@ -677,6 +677,31 @@ class TrackRun:
                     prev_flag = _flag
         self.is_categorised = True
 
+    def categorise_by_percentile(self, subset="unknown", perc=95, by="max_vort"):
+        """
+        Categorise by percentile.
+
+        Parameters
+        ----------
+        subset: str, optional
+            Subset of Trackrun to apply percentile to
+        perc: float, optional
+            Percentile to define a category of cyclones
+            E.g. 95 means the top 5% cyclones.
+        by: str, optional
+            Property of OctantTrack to apply percentile to
+        """
+        label = f"top_{100-perc}_by_{by}"
+        assert label not in self._cats, f"New label={label} clashes with existing one"
+        v_per_track = self[subset].gb.apply(lambda x: getattr(x, by))
+        if len(v_per_track) > 0:
+            cat_id = max(self._cats.values()) + 1
+            thresh = np.percentile(v_per_track, perc)
+            above_thresh = v_per_track[v_per_track > thresh]
+            self.data.loc[above_thresh.index, "cat"] = cat_id
+            self._cats.update({label: cat_id})
+            self.is_categorised = True
+
     def match_tracks(
         self,
         others,
