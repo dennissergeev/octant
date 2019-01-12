@@ -958,7 +958,6 @@ class TrackRun:
             else:
                 cy_func = partial(point_density_rad, rad=r_metres)
         elif method == "cell":
-            # TODO: check cell-method and its units
             # TODO: make this check more flexible
             if (np.diff(lon2d[0, :]) < 0).any() or (np.diff(lat2d[:, 0]) < 0).any():
                 raise GridError("Grid values must be in an ascending order")
@@ -981,6 +980,8 @@ class TrackRun:
             sub_data = (
                 self[subset].gb.tail(1).gb.filter(_exclude_by_last_day, **exclude_last)
             ).lonlat_c
+        else:
+            raise ArgumentError("`by` should be one of point|track|genesis|lysis")
 
         data = cy_func(lon2d_c, lat2d_c, sub_data).base
 

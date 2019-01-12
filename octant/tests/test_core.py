@@ -10,16 +10,24 @@ import numpy as np
 import numpy.testing as npt
 
 from octant import core, parts
+from octant.exceptions import ArgumentError, GridError, LoadError
 
 import pandas as pd
 
 import pytest
 
-TEST_DIR = Path(__file__).parent / "test_data" / "era5_run000"
-REF_DM = Path(__file__).parent / "test_data" / "distance_matrix.npy"
-REF_FILE = Path(__file__).parent / "test_data" / "pmc_loc_time_ch4_20Mar-02Apr.txt"
+import xarray as xr
+
+TEST_DATA = Path(__file__).parent / "test_data"
+TEST_DIR = TEST_DATA / "era5_run000"
+REF_DM = TEST_DATA / "distance_matrix.npy"
+REF_FILE = TEST_DATA / "pmc_loc_time_ch4_20Mar-02Apr.txt"
 
 _counter = itertools.count()
+
+# Create 1D arrays of 1deg-spaced longitude and latitude
+lon1d = np.arange(-15.0, 45.1, 1)
+lat1d = np.arange(65.0, 80.1, 1)
 
 
 @contextlib.contextmanager
@@ -73,6 +81,15 @@ def test_load_data():
     assert len(tr) == 76
     assert tr.size() == 76
     assert not tr.is_categorised
+
+
+def test_loaderror():
+    """Test raising LoadError."""
+    with pytest.raises(LoadError, message="Expecting octant.exceptions.LoadError"):
+        core.TrackRun(str(TEST_DIR))
+    with pytest.raises(LoadError, message="Expecting octant.exceptions.LoadError"):
+        tr = core.TrackRun()
+        tr.load_data(TEST_DIR / "nonexistent_dir")
 
 
 def test_archive(trackrun):
@@ -149,3 +166,45 @@ def test_match_bs2000(trackrun, ref_set):
     assert dm.shape == (trackrun.size(subset), len(ref_set))
     actual_dm = np.load(REF_DM)
     npt.assert_allclose(actual_dm, dm)
+
+
+def test_density_cell_point(trackrun):
+    """Calculate cell point density from cached TrackRun."""
+    dens = trackrun.density(
+        lon1d=lon1d, lat1d=lat1d, subset="unknown", by="point", weight_by_area=False
+    )
+    assert isinstance(dens, xr.DataArray)
+    assert dens.values.sum() == trackrun["unknown"].shape[0]
+    assert lat1d.shape + lon1d.shape == dens.shape
+    actual_dens = np.load(TEST_DATA / "density_cell_point.npy")
+    npt.assert_allclose(actual_dens, dens.values)
+
+
+def test_density_cell_point_grid_bounds(trackrun):
+    """Calculate cell point density with different grid from cached TrackRun."""
+    dens = trackrun.density(
+        lon1d=lon1d,
+        lat1d=lat1d,
+        subset="unknown",
+        grid_centres=False,
+        by="point",
+        weight_by_area=False,
+    )
+    assert isinstance(dens, xr.DataArray)
+    assert dens.values.sum() == trackrun["unknown"].shape[0]
+    assert lat1d.shape[0] - 1 == dens.shape[0]
+    assert lon1d.shape[0] - 1 == dens.shape[1]
+
+
+def test_density_griderror(trackrun):
+    """Test raising GridError in density."""
+    with pytest.raises(GridError, message="Expecting octant.exceptions.GridError"):
+        trackrun.density(lon1d=lon1d, lat1d=lat1d[::-1])
+    with pytest.raises(GridError, message="Expecting octant.exceptions.GridError"):
+        trackrun.density(lon1d=lon1d[::-1], lat1d=lat1d)
+
+
+def test_density_argumenterror(trackrun):
+    """Test raising ArgumentError in density."""
+    with pytest.raises(ArgumentError, message="Expecting octant.exceptions.ArgumentError"):
+        trackrun.density(lon1d=lon1d, lat1d=lat1d, by="blah")
