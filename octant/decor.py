@@ -166,12 +166,16 @@ class ReprTrackRun:
             summary.append(" | ".join(self.trackrun.data.columns))
 
         if self.trackrun.is_categorised:
+            if self.trackrun._cats_inclusive:
+                _pre = "of which "
+            else:
+                _pre = ""
             summary.append("\nCategories:")
             summary.append("         {:>8d} in total".format(self.trackrun.size()))
             for cat_label in self.trackrun._cats.keys():
                 if cat_label != "unknown":
                     summary.append(
-                        "of which {:>8d} are {}".format(self.trackrun.size(cat_label), cat_label)
+                        "{}{:>8d} are {}".format(_pre, self.trackrun.size(cat_label), cat_label)
                     )
 
         if self.trackrun.sources:

@@ -662,8 +662,7 @@ class TrackRun:
         octant.misc.check_by_mask
         """
         if clear:
-            self.data.cat = 0
-            self._cats = {"unknown": 0}
+            self.clear_categories()
         start = max(self._cats.values()) + 1
         cat_dict = {label: num for num, (label, _) in enumerate(conditions, start)}
         self._cat_inclusive = inclusive
@@ -734,6 +733,24 @@ class TrackRun:
             self.data.loc[above_thresh.index, "cat"] = cat_id
             self._cats.update({label: cat_id})
             self.is_categorised = True
+
+    def clear_categories(self, subset=None):
+        """
+        Clear TrackRun of its categories.
+
+        Parameters
+        ----------
+        subset: str, optional
+            If None (default), all categories are removed.
+        """
+        if subset is None:
+            # clear all categories
+            self.data.cat = 0
+            self._cats = {"unknown": 0}
+            self.is_categorised = False
+        else:
+            self[subset].cat = 0
+            self._cats.pop(subset)
 
     def match_tracks(
         self,

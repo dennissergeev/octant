@@ -129,6 +129,14 @@ def test_categorise_by_percentile(trackrun):
         trackrun.categorise_by_percentile(oper="blah")
 
 
+def test_clear_categories(trackrun):
+    """Use cached TrackRun and test removing categories."""
+    trackrun.clear_categories()
+    assert not trackrun.is_categorised
+    assert trackrun._cats == {"unknown": 0}
+    assert (trackrun.data.cat == 0).all()
+
+
 def test_classify(trackrun):
     """Use cached TrackRun instance and test classify() method."""
     conds = [
