@@ -707,7 +707,7 @@ class TrackRun:
         >>> tr = TrackRun(path_to_directory_with_tracks)
         >>> tr._cats
         {'unknown': 0}
-        >>> tr.categorise_by_percentile(perc=10, oper="gt")
+        >>> tr.categorise_by_percentile(perc=90, oper="gt")
         >>> tr._cats
         {'unknown': 0, 'gt_10pc_by_max_vort': 1}
         >>> tr.size("unknown")

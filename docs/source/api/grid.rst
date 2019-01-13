@@ -1,5 +1,5 @@
-Operations on geographical grid parts
-=====================================
+Operations on geographical grid
+===============================
 .. autofunction:: octant.grid.cell_centres
 
 .. autofunction:: octant.grid.cell_bounds
