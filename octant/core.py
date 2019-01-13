@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Classes and functions for the analysis of PMCTRACK output."""
+import operator
 import warnings
 from functools import partial
 from pathlib import Path
@@ -617,7 +618,7 @@ class TrackRun:
 
         self.is_categorised = True
 
-    def classify(self, conditions, inclusive=True):
+    def classify(self, conditions, inclusive=True, clear=True):
         """
         Classify the loaded tracks.
 
@@ -626,13 +627,15 @@ class TrackRun:
         Parameters
         ----------
         conditions: list
-            List of tuples containing a label the corresponding list of functions
-            each of which has OctantTrack as its only argument.
+            List of tuples. Each tuple is a (label, list) pair containing the category label and
+            a list of functions each of which has OctantTrack as its only argument.
             The method assigns numbers to the labels in the same order
             that they are given, starting from number 1 (see examples).
-        inclusive: bool
+        inclusive: bool, optional
             If true, a higher category is a subset of lower category;
             otherwise categories are independent.
+        clear: bool, optional
+            If true, existing TrackRun categories are deleted.
 
         Examples
         --------
@@ -658,12 +661,15 @@ class TrackRun:
         --------
         octant.misc.check_by_mask
         """
-        self.data.cat = 0
-        self._cats.update({label: num for num, (label, _) in enumerate(conditions, 1)})
+        if clear:
+            self.data.cat = 0
+            self._cats = {"unknown": 0}
+        start = max(self._cats.values()) + 1
+        cat_dict = {label: num for num, (label, _) in enumerate(conditions, start)}
         self._cat_inclusive = inclusive
         for i, ot in self._pbar(self.gb):
             prev_flag = True
-            for num, (label, funcs) in enumerate(conditions, 1):
+            for label, funcs in conditions:
                 if inclusive:
                     _flag = prev_flag
                 else:
@@ -672,32 +678,59 @@ class TrackRun:
                 for func in funcs:
                     _flag &= func(ot)
                 if _flag:
-                    self.data.loc[i, "cat"] = num
+                    self.data.loc[i, "cat"] = cat_dict[label]
                 if inclusive:
                     prev_flag = _flag
+        self._cats.update(cat_dict)
         self.is_categorised = True
 
-    def categorise_by_percentile(self, subset="unknown", perc=95, by="max_vort"):
+    def categorise_by_percentile(self, subset="unknown", perc=95, by="max_vort", oper="ge"):
         """
         Categorise by percentile.
 
         Parameters
         ----------
         subset: str, optional
-            Subset of Trackrun to apply percentile to
+            Subset of Trackrun to apply percentile to.
         perc: float, optional
-            Percentile to define a category of cyclones
+            Percentile to define a category of cyclones.
             E.g. 95 means the top 5% cyclones.
         by: str, optional
-            Property of OctantTrack to apply percentile to
+            Property of OctantTrack to apply percentile to.
+        oper: str, optional
+            Math operator to select track above or below the percentile threshold.
+            Can be one of (lt|le|gt|ge).
+
+        Examples
+        --------
+        >>> from octant.core import TrackRun
+        >>> tr = TrackRun(path_to_directory_with_tracks)
+        >>> tr._cats
+        {'unknown': 0}
+        >>> tr.categorise_by_percentile(perc=10, oper="gt")
+        >>> tr._cats
+        {'unknown': 0, 'gt_10pc_by_max_vort': 1}
+        >>> tr.size("unknown")
+        71
+        >>> tr.size("gt_10pc_by_max_vort")
+        7
+
+
+        See Also
+        --------
+        octant.core.TrackRun.classify
         """
-        label = f"top_{100-perc}_by_{by}"
+        allowed_ops = ["lt", "le", "gt", "ge"]
+        if oper not in allowed_ops:
+            raise ArgumentError(f"oper={oper} should be one of {allowed_ops}")
+        op = getattr(operator, oper)
+        label = f"{oper}_{100-perc}pc_by_{by}"
         assert label not in self._cats, f"New label={label} clashes with existing one"
         v_per_track = self[subset].gb.apply(lambda x: getattr(x, by))
         if len(v_per_track) > 0:
             cat_id = max(self._cats.values()) + 1
             thresh = np.percentile(v_per_track, perc)
-            above_thresh = v_per_track[v_per_track > thresh]
+            above_thresh = v_per_track[op(v_per_track, thresh)]
             self.data.loc[above_thresh.index, "cat"] = cat_id
             self._cats.update({label: cat_id})
             self.is_categorised = True

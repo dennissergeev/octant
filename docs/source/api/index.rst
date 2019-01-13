@@ -18,5 +18,6 @@ overall workflow, you are better off starting in the :ref:`examples` section of 
 
    core
    aux
+   grid
    misc
    utils

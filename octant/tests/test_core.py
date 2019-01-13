@@ -92,6 +92,14 @@ def test_loaderror():
         tr.load_data(TEST_DIR / "nonexistent_dir")
 
 
+def test_conf(trackrun):
+    """Use cached TrackRun instance and check the configuration attribute."""
+    assert hasattr(trackrun, "conf")
+    assert len(trackrun.conf) == 43
+    assert len(trackrun.conf.extent) == 4
+    assert trackrun.conf.extent == [-10, 40, 67, 78]
+
+
 def test_archive(trackrun):
     """Test to_archive() and from_archive() methods."""
     with create_tmp_file() as f:
@@ -110,6 +118,15 @@ def test_archive(trackrun):
 #     assert trackrun.size("basic") == 31
 #     assert trackrun.size("moderate") == 10
 #     assert trackrun.size("strong") == 1
+
+
+def test_categorise_by_percentile(trackrun):
+    """Categorise TrackRun by percentile."""
+    trackrun.categorise_by_percentile()
+    assert trackrun._cats == {"unknown": 0, "ge_5pc_by_max_vort": 1}
+    assert trackrun.size("ge_5pc_by_max_vort") == 4
+    with pytest.raises(ArgumentError, message="Expecting octant.exceptions.ArgumentError"):
+        trackrun.categorise_by_percentile(oper="blah")
 
 
 def test_classify(trackrun):
@@ -146,14 +163,6 @@ def test_classify_incl(trackrun):
     assert trackrun.is_categorised
     assert trackrun.size("a") == 31
     assert trackrun.size("b") == 10
-
-
-def test_conf(trackrun):
-    """Use cached TrackRun instance and check the configuration attribute."""
-    assert hasattr(trackrun, "conf")
-    assert len(trackrun.conf) == 43
-    assert len(trackrun.conf.extent) == 4
-    assert trackrun.conf.extent == [-10, 40, 67, 78]
 
 
 def test_match_bs2000(trackrun, ref_set):
