@@ -9,7 +9,7 @@
 # octant
 Objective Cyclone Tracking ANalysis Tools
 
-The package is developed as a companion to the [PMCTRACK](https://github.com/dennissergeev/pmctrack) - vorticity-based cyclone tracking algorithm.
+The package is developed as a companion to [PMCTRACK](https://github.com/dennissergeev/pmctrack) - vorticity-based cyclone tracking algorithm.
 
 The documentation is available [here](https://octant-docs.readthedocs.io/en/latest/).
 
