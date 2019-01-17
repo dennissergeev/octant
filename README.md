@@ -9,22 +9,30 @@
 # octant
 Objective Cyclone Tracking ANalysis Tools
 
+The package is developed as a companion to the [PMCTRACK](https://github.com/dennissergeev/pmctrack) - vorticity-based cyclone tracking algorithm.
+
+The documentation is available [here](https://octant-docs.readthedocs.io/en/latest/).
+
+Contributions are welcome.
+
 ## Installation
 `octant` depends on the following packages:
   - cython
   - matplotlib
   - numpy
   - pandas
+  - pytables
   - xarray
 
-Plotting examples also require the `cartopy` package
+Plotting examples also require the `cartopy` package.
 
-### With conda
+### With conda (recommended)
 ```bash
 conda install -c dennissergeev octant
 ```
 
 ### From source
+After the dependencies are installed:
 ```bash
 git clone https://github.com/dennissergeev/octant.git
 
