@@ -115,7 +115,7 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by="M"):
     return counter
 
 
-def check_by_mask(ot, trackrun, lsm, rad=50.0, mask_thresh=0.5):
+def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, rad=50.0, mask_thresh=0.5):
     """
     Check how close the OctantTrack is to masked points.
 
@@ -133,6 +133,8 @@ def check_by_mask(ot, trackrun, lsm, rad=50.0, mask_thresh=0.5):
         (parent) track run instance to get lon/lat boundaries if present
     lsm: xarray.DataArray
         Two-dimensional land-sea mask
+    lmask_thresh: float
+        Threshold of `lsm` values, for flexible land-mask filtering
     rad: float
         Radius in km, passed to mask_tracks() function
     mask_thresh: float, optional
@@ -150,7 +152,7 @@ def check_by_mask(ot, trackrun, lsm, rad=50.0, mask_thresh=0.5):
     >>> land_mask = xr.open_dataarray(path_to_land_mask_file)
     >>> tr = TrackRun(path_to_directory_with_tracks)
     >>> random_track = tr.loc[123]
-    >>> check_by_mask(random_track, tr, land_mask)
+    >>> check_by_mask(random_track, tr, land_mask, lmask_thresh=0.5)
     True
 
     See Also
@@ -171,7 +173,7 @@ def check_by_mask(ot, trackrun, lsm, rad=50.0, mask_thresh=0.5):
         inner_idx &= lat2d <= trackrun.conf.lat2
     boundary_mask = np.zeros_like(lon2d)
     boundary_mask[~inner_idx] = 1.0
-    trackrun.themask = ((boundary_mask == 1.0) | (l_mask == 1.0)) * 1.0
+    trackrun.themask = ((boundary_mask == 1.0) | (l_mask >= lmask_thresh)) * 1.0
     themask_c = trackrun.themask.astype("double", order="C")
     lon2d_c = lon2d.astype("double", order="C")
     lat2d_c = lat2d.astype("double", order="C")
