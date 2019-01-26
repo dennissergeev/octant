@@ -401,31 +401,6 @@ class TrackRun:
             Merge TrackSettings (.conf attribute) of each of the TrackRuns
             This is done by retaining matching values and setting other to None
         """
-        new_data = pd.concat([self.data, other.data], sort=False)
-        new_track_idx = new_data.index.get_level_values(0).to_series()
-        new_track_idx = new_track_idx.ne(new_track_idx.shift()).cumsum() - 1
-
-        mux = pd.MultiIndex.from_arrays(
-            [new_track_idx, new_data.index.get_level_values(1)], names=new_data.index.names
-        )
-        self.data = new_data.set_index(mux)
-
-        if adapt_conf and other.conf is not None:
-            if self.conf is None:
-                self.conf = other.conf.copy()
-            else:
-                for field in self.conf._fields:
-                    if getattr(self.conf, field) != getattr(other.conf, field):
-                        setattr(self.conf, field, None)
-        self.sources.extend(other.sources)
-        if getattr(self, "tstep_h", None) is None:
-            self.tstep_h = getattr(other, "tstep_h", None)
-        else:
-            if getattr(other, "tstep_h", None) is not None:
-                if self.tstep_h != other.tstep_h:
-                    raise ConcatenationError(
-                        "Extending by a TrackRun with different timestep is not allowed"
-                    )
         # Check if category metadata match
         if (self.size() > 0) and (other.size() > 0):
             for attr in ["_cats", "_cat_inclusive", "is_categorised"]:
@@ -437,6 +412,31 @@ class TrackRun:
         elif other.size() > 0:
             for attr in ["_cats", "_cat_inclusive", "is_categorised"]:
                 setattr(self, attr, getattr(other, attr))
+        if getattr(self, "tstep_h", None) is None:
+            self.tstep_h = getattr(other, "tstep_h", None)
+        else:
+            if getattr(other, "tstep_h", None) is not None:
+                if self.tstep_h != other.tstep_h:
+                    raise ConcatenationError(
+                        "Extending by a TrackRun with different timestep is not allowed"
+                    )
+        if adapt_conf and other.conf is not None:
+            if self.conf is None:
+                self.conf = other.conf.copy()
+            else:
+                for field in self.conf._fields:
+                    if getattr(self.conf, field) != getattr(other.conf, field):
+                        setattr(self.conf, field, None)
+        self.sources.extend(other.sources)
+
+        new_data = pd.concat([self.data, other.data], sort=False)
+        new_track_idx = new_data.index.get_level_values(0).to_series()
+        new_track_idx = new_track_idx.ne(new_track_idx.shift()).cumsum() - 1
+
+        mux = pd.MultiIndex.from_arrays(
+            [new_track_idx, new_data.index.get_level_values(1)], names=new_data.index.names
+        )
+        self.data = new_data.set_index(mux)
 
     def time_slice(self, start=None, end=None):
         """
