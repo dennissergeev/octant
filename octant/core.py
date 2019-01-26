@@ -12,7 +12,14 @@ import pandas as pd
 import xarray as xr
 
 from .decor import ReprTrackRun, get_pbar
-from .exceptions import ArgumentError, DeprecatedWarning, GridError, LoadError, MissingConfWarning
+from .exceptions import (
+    ArgumentError,
+    ConcatenationError,
+    DeprecatedWarning,
+    GridError,
+    LoadError,
+    MissingConfWarning,
+)
 from .grid import cell_bounds, cell_centres, grid_cell_areas
 from .misc import _exclude_by_first_day, _exclude_by_last_day
 from .params import ARCH_KEY, COLUMNS, HOUR, M2KM
@@ -415,8 +422,21 @@ class TrackRun:
             self.tstep_h = getattr(other, "tstep_h", None)
         else:
             if getattr(other, "tstep_h", None) is not None:
-                _msg = "Extending by a TrackRun with different timestep is not allowed"
-                assert self.tstep_h == other.tstep_h, _msg
+                if self.tstep_h != other.tstep_h:
+                    raise ConcatenationError(
+                        "Extending by a TrackRun with different timestep is not allowed"
+                    )
+        # Check if category metadata match
+        if (self.size() > 0) and (other.size() > 0):
+            for attr in ["_cats", "_cat_inclusive", "is_categorised"]:
+                a, b = getattr(self, attr), getattr(other, attr)
+                if a != b:
+                    raise ConcatenationError(
+                        f"Categorisation metadata is different for '{attr}': {a} != {b}"
+                    )
+        elif other.size() > 0:
+            for attr in ["_cats", "_cat_inclusive", "is_categorised"]:
+                setattr(self, attr, getattr(other, attr))
 
     def time_slice(self, start=None, end=None):
         """

@@ -52,3 +52,9 @@ class GridError(OctantError):
     """Raised when lon/lat grids are not correct."""
 
     pass
+
+
+class ConcatenationError(OctantError):
+    """Raised when there is something wrong with extend() method."""
+
+    pass

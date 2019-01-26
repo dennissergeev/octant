@@ -9,11 +9,13 @@ v0.0.19
 :Release: unreleased
 :Date: XXX
 
+* Fix a bug with metadata loss in `TrackRun.extend()`
 * Add `classify_by_percentile()` and `clear_categories()` methods
 * Improve `density()` method with cell-based calculation, add weighting by grid cell area
 * Add helper functions to deal with lon-lat grids to the `grid` submodule
 * Add short-cut property `gb` to `OctantTrack` to group by track indices
 * Optimise keyword arguments in `TrackRun.load_data` and `TrackRun.__init__`
+* Add land-mask threshold keyword argument to `check_by_mask()`
 * Minor bug fixes, more tests
 
 
