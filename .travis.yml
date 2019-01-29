@@ -27,7 +27,8 @@ install:
       conda env create -n test_env --file ci/requirements-$CONDA_ENV.yml;
     fi;
   - source activate test_env
-  - python setup.py install
+  - conda list
+  - python setup.py develop
 
 script:
   - if [[ "$CONDA_ENV" == "docs" ]]; then

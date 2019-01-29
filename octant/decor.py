@@ -148,7 +148,9 @@ class ReprTrackRun:
         # List of columns of the .data container
         cells.append('<tr class="octant">')
         cells.append('<td class="octant octant-ra">Data columns</td>')
-        cells.append(f'<td class="octant octant-la">{", ".join(self.data_cols)}</td>')
+        cells.append(
+            f'<td class="octant octant-la" colspan="{self.ncol}">{", ".join(self.data_cols)}</td>'
+        )
         # for col in self.data_cols:
         #     cells.append(f'<td class="octant octant-la">{col}</td>')
         cells.append("</tr>")
