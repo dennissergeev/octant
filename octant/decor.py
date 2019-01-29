@@ -166,7 +166,7 @@ class ReprTrackRun:
             summary.append(" | ".join(self.trackrun.data.columns))
 
         if self.trackrun.is_categorised:
-            if self.trackrun._cats_inclusive:
+            if self.trackrun._cat_inclusive:
                 _pre = "of which "
             else:
                 _pre = ""

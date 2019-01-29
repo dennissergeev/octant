@@ -48,10 +48,10 @@ cpdef double great_circle(double lon1,
     ----------
     lon1: double
         Longitude of the first point
-    lat1: double
-        Latitude of the first point
     lon2: double
         Longitude of the second point
+    lat1: double
+        Latitude of the first point
     lat2: double
         Latitude of the second point
     r: double, optional (default: EARTH_RADIUS)
@@ -60,6 +60,12 @@ cpdef double great_circle(double lon1,
     -------
     dist: double
         Distance in metres
+
+    Examples
+    --------
+    >>> great_circle(-180.0, -170.0, 30.0, 40.0)
+    1435334.9068947
+
     """
 
     return _great_circle(lon1, lon2, lat1, lat2, r=r)
