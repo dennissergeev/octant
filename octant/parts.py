@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Auxiliary classes for octant package."""
+from .decor import ReprTrackSettings
 from .exceptions import LoadError
 
 
@@ -77,11 +78,16 @@ class TrackSettings:
         return len(self._fields)
 
     def __repr__(self):  # noqa
-        return "Settings used for " f"PMC tracking algorithm ({len(self)})"
+        rtr = ReprTrackSettings(self)
+        return rtr.str_repr(short=True)
 
     def __str__(self):  # noqa
-        summary = "\n".join([f"{k} = {getattr(self, k, None)}" for k in self._fields])
-        return f"Settings used for PMC tracking algorithm:\n\n{summary}"
+        rtr = ReprTrackSettings(self)
+        return rtr.str_repr(short=False)
+
+    def _repr_html_(self):
+        rtr = ReprTrackSettings(self)
+        return rtr.html_repr()
 
     def to_dict(self):
         """Convert TrackSettings to a dictionary."""

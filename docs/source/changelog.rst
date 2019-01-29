@@ -16,6 +16,7 @@ v0.0.19
 * Add short-cut property `gb` to `OctantTrack` to group by track indices
 * Optimise keyword arguments in `TrackRun.load_data` and `TrackRun.__init__`
 * Add land-mask threshold keyword argument to `check_by_mask()`
+* Add HTML representation of `TrackSettings`
 * Minor bug fixes, more tests
 
 

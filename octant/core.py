@@ -246,7 +246,7 @@ class TrackRun:
         return new
 
     def __getitem__(self, subset):  # noqa
-        if subset in [slice(None), None, "all"]:
+        if (subset in [slice(None), None, "all"]) or self.size() == 0:
             return self.data
         else:
             if self._cat_inclusive:
