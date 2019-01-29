@@ -1,13 +1,24 @@
 # -*- coding: utf-8 -*-
 """Bells and whistles."""
-# This module is temporarily disabled
 from . import RUNTIME
 
 
-def get_pbar():
-    """Get progress bar if the run-time option is enabled."""
+def get_pbar(use='fastprogress'):
+    """
+    Get progress bar if the run-time option is enabled and modules are installed.
+
+    Parameters
+    ----------
+    use: str, optional
+        What library to use: fastprogress (default) or tqdm.
+
+    Returns
+    -------
+    _pbar: fastprogress.progress_bar or tqdm.tqdm or tqdm.tqdm_notebook
+         or an empty wrapper
+    """
     # noqa
-    def _pbar(obj, **tqdm_kw):
+    def _pbar(obj, **pbar_kw):
         """Empty progress bar."""
         return obj
 
@@ -15,13 +26,13 @@ def get_pbar():
         from functools import partial
 
         try:
-            # if fastprogress is installed
-            from fastprogress import progress_bar
+            if use == 'fastprogress':
+                # if fastprogress is installed
+                from fastprogress import progress_bar
 
-            return partial(progress_bar)
-        except ImportError:
-            try:
-                # If tqdm is installed
+                return partial(progress_bar)
+            elif use == 'tqdm':
+                # if tqdm is installed
                 try:
                     # Check if it's Jupyter Notebook
                     ipy_str = str(type(get_ipython()))
@@ -32,8 +43,8 @@ def get_pbar():
                 except NameError:
                     from tqdm import tqdm
                 return partial(tqdm)
-            except ImportError:
-                return _pbar
+        except ImportError:
+            return _pbar
     else:
         return _pbar
 
