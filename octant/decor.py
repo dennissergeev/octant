@@ -3,7 +3,7 @@
 from . import RUNTIME
 
 
-def get_pbar(use='fastprogress'):
+def get_pbar(use="fastprogress"):
     """
     Get progress bar if the run-time option is enabled and modules are installed.
 
@@ -26,12 +26,12 @@ def get_pbar(use='fastprogress'):
         from functools import partial
 
         try:
-            if use == 'fastprogress':
+            if use == "fastprogress":
                 # if fastprogress is installed
                 from fastprogress import progress_bar
 
                 return partial(progress_bar)
-            elif use == 'tqdm':
+            elif use == "tqdm":
                 # if tqdm is installed
                 try:
                     # Check if it's Jupyter Notebook
