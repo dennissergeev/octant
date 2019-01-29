@@ -10,7 +10,7 @@ import numpy as np
 import numpy.testing as npt
 
 from octant import core, parts
-from octant.exceptions import ArgumentError, GridError, LoadError
+from octant.exceptions import ArgumentError, DeprecatedWarning, GridError, LoadError
 
 import pandas as pd
 
@@ -85,9 +85,9 @@ def test_load_data():
 
 def test_loaderror():
     """Test raising LoadError."""
-    with pytest.raises(LoadError, message="Expecting octant.exceptions.LoadError"):
+    with pytest.raises(LoadError):
         core.TrackRun(str(TEST_DIR))
-    with pytest.raises(LoadError, message="Expecting octant.exceptions.LoadError"):
+    with pytest.raises(LoadError):
         tr = core.TrackRun()
         tr.load_data(TEST_DIR / "nonexistent_dir")
 
@@ -111,22 +111,24 @@ def test_archive(trackrun):
         assert isinstance(another.conf, parts.TrackSettings)
 
 
-# def test_categorise(trackrun):
-#     """Use cached TrackRun instance and test categorise() method."""
-#     trackrun.categorise()
-#     assert trackrun.is_categorised
-#     assert trackrun.size("basic") == 31
-#     assert trackrun.size("moderate") == 10
-#     assert trackrun.size("strong") == 1
-
-
 def test_categorise_by_percentile(trackrun):
     """Categorise TrackRun by percentile."""
     trackrun.categorise_by_percentile()
     assert trackrun._cats == {"unknown": 0, "ge_5pc_by_max_vort": 1}
     assert trackrun.size("ge_5pc_by_max_vort") == 4
-    with pytest.raises(ArgumentError, message="Expecting octant.exceptions.ArgumentError"):
+    with pytest.raises(ArgumentError):
         trackrun.categorise_by_percentile(oper="blah")
+
+
+def test_categorise(trackrun):
+    """Use cached TrackRun instance and test categorise() method."""
+    with pytest.warns(DeprecatedWarning):
+        trackrun.clear_categories()
+        trackrun.categorise()
+        assert trackrun.is_categorised
+        assert trackrun.size("basic") == 31
+        assert trackrun.size("moderate") == 10
+        assert trackrun.size("strong") == 1
 
 
 def test_clear_categories(trackrun):
@@ -215,13 +217,13 @@ def test_density_cell_point_grid_bounds(trackrun):
 
 def test_density_griderror(trackrun):
     """Test raising GridError in density."""
-    with pytest.raises(GridError, message="Expecting octant.exceptions.GridError"):
+    with pytest.raises(GridError):
         trackrun.density(lon1d=lon1d, lat1d=lat1d[::-1])
-    with pytest.raises(GridError, message="Expecting octant.exceptions.GridError"):
+    with pytest.raises(GridError):
         trackrun.density(lon1d=lon1d[::-1], lat1d=lat1d)
 
 
 def test_density_argumenterror(trackrun):
     """Test raising ArgumentError in density."""
-    with pytest.raises(ArgumentError, message="Expecting octant.exceptions.ArgumentError"):
+    with pytest.raises(ArgumentError):
         trackrun.density(lon1d=lon1d, lat1d=lat1d, by="blah")

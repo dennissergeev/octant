@@ -124,7 +124,8 @@ class ReprTrackRun:
             cells.append('<tr class="octant">')
             cells.append(
                 '<td class="octant octant-la"></td>'
-                f'<td colspan="{self.ncol-2}">{self.n_tracks}</td><td class="octant octant-la">in total</td>'
+                f'<td colspan="{self.ncol-2}">{self.n_tracks}</td>'
+                '<td class="octant octant-la">in total</td>'
             )
             cells.append("</tr>")
             cells.append("</tr>")
@@ -237,11 +238,11 @@ class ReprTrackSettings:
         self.name = f"{self.ts.__module__}.{self.ts.__class__.__name__}"
         self.n_set = len(ts)
         self.ncol = 2
-        self.longname = f"Settings used in tracking algorithm ({self.n_set})"
+        self.longname = f"Tracking algorithm settings ({self.n_set})"
 
     def _make_header(self):
-        top_cell = f'<th class="octant octant-la" colspan="{self.ncol}">{self.longname}</th>'
-        cells = ['<tr class="octant">', top_cell, "</tr>"]
+        top_cell = f'<th class="octant" colspan="{self.ncol}">{self.longname}</th>'
+        cells = ['<tr class="octant octant-la">', top_cell, "</tr>"]
         return "\n".join(cells)
 
     def _make_content(self):
@@ -269,7 +270,7 @@ class ReprTrackSettings:
         """Represent TrackSettings as string."""
         summary = [self.longname]
         if self.n_set > 0 and not short:
-            summary.append("\n")
+            summary.append("")
             summary += [f"{k} = {getattr(self.ts, k, None)}" for k in self.ts._fields]
 
         return "\n".join(summary)

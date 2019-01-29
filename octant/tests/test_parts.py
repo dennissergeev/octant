@@ -22,9 +22,9 @@ def test_empty_tracksettings():
 def test_tracksettings():
     """Test TrackSettings."""
     ts = parts.TrackSettings(TEST_FNAME)
-    assert ts.__repr__() == "Settings used for PMC tracking algorithm (43)"
-    assert len(ts.__str__()) == 763
-    assert ts.__str__().startswith("Settings used for PMC tracking algorithm:")
+    assert ts.__repr__() == "Tracking algorithm settings (43)"
+    assert len(ts.__str__()) == 754
+    assert ts.__str__().startswith("Tracking algorithm settings")
     assert len(ts) == 43
     assert ts.extent == [-10, 40, 67, 78]
     assert isinstance(ts.to_dict(), dict)
@@ -39,11 +39,11 @@ def test_copy():
     new = ts.copy()
     assert isinstance(new, parts.TrackSettings)
     assert len(new) == 43
-    assert new.__repr__() == "Settings used for PMC tracking algorithm (43)"
+    assert new.__repr__() == "Tracking algorithm settings (43)"
     assert new.extent == [-10, 40, 67, 78]
 
 
 def test_loaderror():
     """Test raising LoadError."""
-    with pytest.raises(LoadError, message="Expecting octant.exceptions.LoadError"):
+    with pytest.raises(LoadError):
         parts.TrackSettings(str(TEST_FNAME))
