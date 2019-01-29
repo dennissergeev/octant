@@ -111,17 +111,23 @@ class OctantTrack(pd.DataFrame):
     @property
     def lifetime_h(self):
         """Track duration in hours."""
-        return (self.time.values[-1] - self.time.values[0]) / HOUR
+        if self.shape[0] > 0:
+            return (self.time.values[-1] - self.time.values[0]) / HOUR
+        else:
+            return 0
 
     @property
     def gen_lys_dist_km(self):
         """Distance between genesis and lysis of the cyclone track in km."""
-        return (
-            great_circle(
-                self.lonlat[0, 0], self.lonlat[-1, 0], self.lonlat[0, 1], self.lonlat[-1, 1]
+        if self.shape[0] > 0:
+            return (
+                great_circle(
+                    self.lonlat[0, 0], self.lonlat[-1, 0], self.lonlat[0, 1], self.lonlat[-1, 1]
+                )
+                * M2KM
             )
-            * M2KM
-        )
+        else:
+            return 0
 
     @property
     def total_dist_km(self):
@@ -142,6 +148,33 @@ class OctantTrack(pd.DataFrame):
     def mean_vort(self):
         """Mean vorticity of the cyclone track."""
         return np.nanmean(self.vo.values)
+
+    def within_rectangle(self, lon0, lon1, lat0, lat1, thresh=1):
+        """
+        Check that OctantTrack is within a rectangle for a fraction of its lifetime.
+
+        Parameters
+        ----------
+        lon0, lon1, lat0, lat1: float
+            Boundaries of longitude-latitude rectangle (lon_min, lon_max, lat_min, lat_max)
+        thresh: float, optional
+            Time threshold. By default, set to maximum, i.e. rack should be within the box entirely.
+
+        Returns
+        -------
+        bool
+
+        Examples
+        --------
+        Test that cyclone spends no more than a third of its life time outside the box
+        >>> box = [-10, 25, 68, 78]
+        >>> ot.within_rectangle(*bbox, thresh=0.67)
+        True
+        """
+        time_within = self[
+            (self.lon >= lon0) & (self.lon <= lon1) & (self.lat >= lat0) & (self.lat <= lat1)
+        ].lifetime_h
+        return time_within / self.lifetime_h >= thresh
 
     def plot_track(self, ax=None, **kwargs):
         """
