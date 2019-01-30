@@ -114,8 +114,8 @@ def test_archive(trackrun):
 def test_categorise_by_percentile(trackrun):
     """Categorise TrackRun by percentile."""
     trackrun.categorise_by_percentile()
-    assert trackrun._cats == {"unknown": 0, "ge_5pc_by_max_vort": 1}
-    assert trackrun.size("ge_5pc_by_max_vort") == 4
+    assert trackrun._cats == {"unknown": 0, "max_vort__ge__95pc": 1}
+    assert trackrun.size("max_vort__ge__95pc") == 4
     with pytest.raises(ArgumentError):
         trackrun.categorise_by_percentile(oper="blah")
 
@@ -133,8 +133,19 @@ def test_categorise(trackrun):
 
 def test_clear_categories(trackrun):
     """Use cached TrackRun and test removing categories."""
+    trackrun.clear_categories(subset="moderate", inclusive=False)
+    assert trackrun.is_categorised
+    assert trackrun._cat_inclusive
+    assert trackrun._cats == {"unknown": 0, "basic": 1, "strong": 3}
+    assert trackrun.size("basic") == 22
+    assert trackrun.size("strong") == 1
+
+
+def test_clear_categories_all(trackrun):
+    """Use cached TrackRun and test removing categories."""
     trackrun.clear_categories()
     assert not trackrun.is_categorised
+    assert not trackrun._cat_inclusive
     assert trackrun._cats == {"unknown": 0}
     assert (trackrun.data.cat == 0).all()
 

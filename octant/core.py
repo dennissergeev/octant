@@ -746,7 +746,7 @@ class TrackRun:
             Subset of Trackrun to apply percentile to.
         perc: float, optional
             Percentile to define a category of cyclones.
-            E.g. 95 means the top 5% cyclones.
+            E.g. (perc=95, oper='ge') is the top 5% cyclones.
         by: str, optional
             Property of OctantTrack to apply percentile to.
         oper: str, optional
@@ -761,10 +761,10 @@ class TrackRun:
         {'unknown': 0}
         >>> tr.categorise_by_percentile(perc=90, oper="gt")
         >>> tr._cats
-        {'unknown': 0, 'gt_10pc_by_max_vort': 1}
+        {'unknown': 0, 'max_vort__gt__90pc': 1}
         >>> tr.size("unknown")
         71
-        >>> tr.size("gt_10pc_by_max_vort")
+        >>> tr.size("max_vort__gt__90pc")
         7
 
 
@@ -776,7 +776,11 @@ class TrackRun:
         if oper not in allowed_ops:
             raise ArgumentError(f"oper={oper} should be one of {allowed_ops}")
         op = getattr(operator, oper)
-        label = f"{oper}_{100-perc}pc_by_{by}"
+        if subset == "unknown":
+            label = ""
+        else:
+            label = f"{subset}__with__"
+        label += f"{by}__{oper}__{perc}pc"
         assert label not in self._cats, f"New label={label} clashes with existing one"
         v_per_track = self[subset].gb.apply(lambda x: getattr(x, by))
         if len(v_per_track) > 0:
@@ -787,23 +791,59 @@ class TrackRun:
             self._cats.update({label: cat_id})
             self.is_categorised = True
 
-    def clear_categories(self, subset=None):
+    def clear_categories(self, subset=None, inclusive=None):
         """
         Clear TrackRun of its categories.
+
+        If categories are inclusive, it destroys child categories
 
         Parameters
         ----------
         subset: str, optional
             If None (default), all categories are removed.
+        inclusive: bool or None, optional
+            If supplied, is used instead of _cat_inclusive attribute.
+
+        Examples
+        --------
+        Inclusive categories
+        >>> tr = TrackRun(path_to_directory_with_tracks)
+        >>> tr._cats
+        {'unknown': 0, 'pmc': 1, 'max_vort__ge__90pc': 2}
+        >>> tr._cat_inclusive
+        True
+        >>> tr.clear_categories(subset='pmc')
+        >>> tr._cats
+        {'unknown': 0}
+
+        Non-inclusive:
+        >>> tr = TrackRun(path_to_directory_with_tracks)
+        >>> tr._cats
+        {'unknown': 0, 'pmc': 1, 'max_vort__ge__90pc': 2}
+        >>> tr.clear_categories(subset='pmc', inclusive=False)
+        >>> tr._cats
+        {'unknown': 0, 'max_vort__ge__90pc': 2}
         """
+        if inclusive is not None:
+            inc = inclusive
+        else:
+            inc = self._cat_inclusive
         if subset is None:
             # clear all categories
             self.data.cat = 0
             self._cats = {"unknown": 0}
-            self.is_categorised = False
         else:
-            self[subset].cat = 0
-            self._cats.pop(subset)
+            cat_id = self._cats[subset]
+            # Do not use self[subset].cat = 0 ! - SettingWithCopyWarning
+            if inc:
+                self.data.loc[self.data.cat >= cat_id, "cat"] = cat_id - 1
+                self._cats = {k: v for k, v in self._cats.items() if v < cat_id}
+            else:
+                self.data.loc[self.data.cat == cat_id, "cat"] = 0
+                self._cats.pop(subset)
+        if self._cats == {"unknown": 0}:
+            self.is_categorised = False
+            self._cat_inclusive = False
 
     def match_tracks(
         self,
@@ -960,9 +1000,9 @@ class TrackRun:
             sub_indices = list(sub_gb.indices.keys())
             other_indices = list(other_gb.indices.keys())
             dist_matrix = np.full((len(sub_gb), len(other_gb)), 9e20)
-            for i, (_, ct) in self._pbar(enumerate(sub_gb)):  # , desc="self tracks"):
+            for i, (_, ct) in enumerate(self._pbar(sub_gb, leave=False)):  # , desc="self tracks"):
                 x1, y1, t1 = ct.coord_view
-                for j, (_, other_ct) in self._pbar(enumerate(other_gb), leave=False):
+                for j, (_, other_ct) in enumerate(self._pbar(other_gb, leave=False)):
                     x2, y2, t2 = other_ct.coord_view
                     dist_matrix[i, j] = distance_metric(x1, y1, t1, x2, y2, t2, beta=float(beta))
             for i, idx1 in enumerate(np.nanargmin(dist_matrix, axis=0)):
