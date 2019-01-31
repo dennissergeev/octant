@@ -6,7 +6,7 @@ Changelog
 v0.0.19
 -------
 
-:Release: unreleased
+:Release: v0.0.19
 :Date: 1 February 2019
 
 * Fix a bug with metadata loss in `TrackRun.extend()`

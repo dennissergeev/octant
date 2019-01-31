@@ -167,6 +167,7 @@ class OctantTrack(pd.DataFrame):
         Examples
         --------
         Test that cyclone spends no more than a third of its life time outside the box
+
         >>> box = [-10, 25, 68, 78]
         >>> ot.within_rectangle(*bbox, thresh=0.67)
         True
@@ -807,6 +808,7 @@ class TrackRun:
         Examples
         --------
         Inclusive categories
+
         >>> tr = TrackRun(path_to_directory_with_tracks)
         >>> tr._cats
         {'unknown': 0, 'pmc': 1, 'max_vort__ge__90pc': 2}
@@ -816,7 +818,8 @@ class TrackRun:
         >>> tr._cats
         {'unknown': 0}
 
-        Non-inclusive:
+        Non-inclusive
+
         >>> tr = TrackRun(path_to_directory_with_tracks)
         >>> tr._cats
         {'unknown': 0, 'pmc': 1, 'max_vort__ge__90pc': 2}
