@@ -22,7 +22,7 @@ from .exceptions import (
 )
 from .grid import cell_bounds, cell_centres, grid_cell_areas
 from .misc import _exclude_by_first_day, _exclude_by_last_day
-from .params import ARCH_KEY, COLUMNS, HOUR, M2KM
+from .params import ARCH_KEY, ARCH_KEY_CAT, COLUMNS, HOUR, M2KM
 from .parts import TrackSettings
 from .utils import (
     distance_metric,
@@ -208,11 +208,17 @@ class TrackRun:
 
     Attributes
     ----------
+    data: octant.core.OctantTrack
+        DataFrame-like container of tracking locations, times, and other data
     filelist: list
-        list of "vortrack" files
+        List of source "vortrack" files; see PMCTRACK docs for more info
     conf: octant.parts.TrackSettings
         Configuration used for tracking
-
+    is_categorised: bool
+        Flag if categorisation has been applied to the TrackRun
+    cats: None or pandas.DataFrame
+        DataFrame with the same index as data and the number of columns equal to
+        the number of categories; None if `is_categorised` is False
     """
 
     _mux_names = ["track_idx", "row_idx"]
@@ -238,6 +244,9 @@ class TrackRun:
         self.data = OctantTrack(index=mux, columns=self.columns)
         self.filelist = []
         self.sources = []
+        self.cats = None
+        # self.cats = pd.DataFrame(index=pd.MultiIndex.from_arrays([[], []],
+        #                          names=self._mux_names), columns=[])
         self._cats = {"unknown": 0}
         self.is_categorised = False
         self._cat_inclusive = False
@@ -393,6 +402,9 @@ class TrackRun:
         with pd.HDFStore(filename, mode="r") as store:
             df = store[ARCH_KEY]
             metadata = store.get_storer(ARCH_KEY).attrs.metadata
+            _is_cat = metadata["is_categorised"]
+            if _is_cat:
+                df_cat = store.get(ARCH_KEY_CAT)
         tr = cls()
         if df.shape[0] > 0:
             tr.data = OctantTrack.from_mux_df(df.set_index(cls._mux_names))
@@ -400,6 +412,8 @@ class TrackRun:
             tr.data = OctantTrack.from_mux_df(df)
         metadata["conf"] = TrackSettings.from_dict(metadata["conf"])
         tr.__dict__.update(metadata)
+        if _is_cat:
+            tr.cats = df_cat.set_index(cls._mux_names)
         return tr
 
     def to_archive(self, filename):
@@ -418,10 +432,16 @@ class TrackRun:
                 df = pd.DataFrame(columns=self.columns, index=self.data.index)
             store.put(ARCH_KEY, df)
             metadata = {
-                k: v for k, v in self.__dict__.items() if k not in ["data", "filelist", "conf"]
+                k: v
+                for k, v in self.__dict__.items()
+                if k not in ["data", "filelist", "conf", "cats"]
             }
             metadata["conf"] = getattr(self.conf, "to_dict", lambda: {})()
             store.get_storer(ARCH_KEY).attrs.metadata = metadata
+            # Store DataFrame with categorisation data
+            if self.is_categorised:
+                df_cat = pd.DataFrame.from_records(self.cats.to_records(index=True))
+                store.put(ARCH_KEY_CAT, df_cat)
 
     def extend(self, other, adapt_conf=True):
         """
