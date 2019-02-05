@@ -404,7 +404,11 @@ class TrackRun:
             metadata = store.get_storer(ARCH_KEY).attrs.metadata
             _is_cat = metadata["is_categorised"]
             if _is_cat:
-                df_cat = store.get(ARCH_KEY_CAT)
+                try:
+                    df_cat = store.get(ARCH_KEY_CAT)
+                except KeyError:
+                    # FIXME
+                    df_cat = pd.DataFrame(columns=cls._mux_names)
         tr = cls()
         if df.shape[0] > 0:
             tr.data = OctantTrack.from_mux_df(df.set_index(cls._mux_names))
