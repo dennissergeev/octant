@@ -15,10 +15,11 @@ from .decor import ReprTrackRun, get_pbar
 from .exceptions import (
     ArgumentError,
     ConcatenationError,
-    DeprecatedWarning,
     GridError,
     LoadError,
     MissingConfWarning,
+    NotCategorisedError,
+    SelectError,
 )
 from .grid import cell_bounds, cell_centres, grid_cell_areas
 from .misc import _exclude_by_first_day, _exclude_by_last_day
@@ -27,7 +28,6 @@ from .parts import TrackSettings
 from .utils import (
     distance_metric,
     great_circle,
-    mask_tracks,
     point_density_cell,
     point_density_rad,
     total_dist,
@@ -245,12 +245,9 @@ class TrackRun:
         self.filelist = []
         self.sources = []
         self.cats = None
-        # self.cats = pd.DataFrame(index=pd.MultiIndex.from_arrays([[], []],
-        #                          names=self._mux_names), columns=[])
-        self._cats = {"unknown": 0}
         self.is_categorised = False
-        self._cat_inclusive = False
-        # self._density = None
+        self.is_cat_inclusive = False
+        self._cat_sep = "|"
         if isinstance(self.dirname, Path):
             # Read all files and store in self.all
             # as a list of `pandas.DataFrame`s
@@ -289,13 +286,26 @@ class TrackRun:
         return new
 
     def __getitem__(self, subset):  # noqa
-        if (subset in [slice(None), None, "all"]) or self.size() == 0:
+        if (subset in [slice(None), None, "all"]) or len(self) == 0:
             return self.data
         else:
-            if self._cat_inclusive:
-                return self.data[self.data.cat >= self._cats[subset]]
+            if self.is_categorised:
+                if subset not in self.cats.columns:
+                    raise SelectError(
+                        f"'{subset}' is not among categories: {', '.join(self.cats.columns)}"
+                    )
+                idx = self.cats[self.cats[subset]].index
+                return self.data.loc[idx, :]
             else:
-                return self.data[self.data.cat == self._cats[subset]]
+                raise NotCategorisedError
+
+    @property
+    def cat_labels(self):
+        """List of category labels."""
+        try:
+            return list(self.cats.columns)
+        except AttributeError:
+            return []
 
     @property
     def _pbar(self):
@@ -320,11 +330,10 @@ class TrackRun:
         mapping: dict
             How to rename categories, {old_key: new_key}
         """
-        for old_key, new_key in mapping.items():
-            try:
-                self._cats[new_key] = self._cats.pop(old_key)
-            except KeyError:
-                pass
+        if self.is_categorised:
+            self.cats = self.cats.rename(columns=mapping)
+        else:
+            raise NotCategorisedError
 
     def load_data(
         self, dirname, columns=COLUMNS, wcard="vortrack*0001.txt", conf_file=None, scale_vo=1e-3
@@ -379,7 +388,7 @@ class TrackRun:
             _data.append(OctantTrack.from_df(pd.read_csv(fname, **load_kw)))
         if len(_data) > 0:
             self.data = pd.concat(_data, keys=range(len(_data)), names=self._mux_names)
-            self.data["cat"] = 0
+            # self.data["cat"] = 0
             # Scale vorticity to (s-1)
             self.data["vo"] *= scale_vo
         del _data
@@ -408,17 +417,18 @@ class TrackRun:
                     df_cat = store.get(ARCH_KEY_CAT)
                 except KeyError:
                     # FIXME
-                    df_cat = pd.DataFrame(columns=cls._mux_names)
-        tr = cls()
+                    # track_idx
+                    df_cat = pd.DataFrame(columns=cls._mux_names[0])
+        out = cls()
         if df.shape[0] > 0:
-            tr.data = OctantTrack.from_mux_df(df.set_index(cls._mux_names))
+            out.data = OctantTrack.from_mux_df(df.set_index(cls._mux_names))
         else:
-            tr.data = OctantTrack.from_mux_df(df)
+            out.data = OctantTrack.from_mux_df(df)
         metadata["conf"] = TrackSettings.from_dict(metadata["conf"])
-        tr.__dict__.update(metadata)
+        out.__dict__.update(metadata)
         if _is_cat:
-            tr.cats = df_cat.set_index(cls._mux_names)
-        return tr
+            out.cats = df_cat.set_index(cls._mux_names[0])
+        return out
 
     def to_archive(self, filename):
         """
@@ -461,14 +471,14 @@ class TrackRun:
         """
         # Check if category metadata match
         if (self.size() > 0) and (other.size() > 0):
-            for attr in ["_cats", "_cat_inclusive", "is_categorised"]:
+            for attr in ["is_cat_inclusive", "is_categorised"]:
                 a, b = getattr(self, attr), getattr(other, attr)
                 if a != b:
                     raise ConcatenationError(
                         f"Categorisation metadata is different for '{attr}': {a} != {b}"
                     )
         elif other.size() > 0:
-            for attr in ["_cats", "_cat_inclusive", "is_categorised"]:
+            for attr in ["cats", "is_cat_inclusive", "is_categorised"]:
                 setattr(self, attr, getattr(other, attr))
         if getattr(self, "tstep_h", None) is None:
             self.tstep_h = getattr(other, "tstep_h", None)
@@ -487,6 +497,7 @@ class TrackRun:
                         setattr(self.conf, field, None)
         self.sources.extend(other.sources)
 
+        # FIXME: concatenate self.cats
         new_data = pd.concat([self.data, other.data], sort=False)
         new_track_idx = new_data.index.get_level_values(0).to_series()
         new_track_idx = new_track_idx.ne(new_track_idx.shift()).cumsum() - 1
@@ -541,166 +552,9 @@ class TrackRun:
                 pass
             return result
 
-    def categorise(
-        self,
-        filt_by_time=True,
-        filt_by_dist=True,
-        filt_by_vort=False,
-        filt_by_domain_bounds=True,
-        filt_by_land=True,
-        filt_by_percentile=True,
-        strong_percentile=95,
-        time_thresh0=6,
-        time_thresh1=9,
-        dist_thresh=300.0,
-        type_thresh=0.2,
-        lsm=None,
-        coast_rad=50.0,
-        vort_thresh0=3e-4,
-        vort_thresh1=4.5e-4,
-    ):
+    def classify(self, conditions, inclusive=False, clear=True):
         """
-        Classify the loaded tracks.
-
-        .. deprecated:: 0.0.18
-
-        Criteria:
-         - lifetime
-         - proximity to land or domain boundaries
-         - distance
-         - type
-         - vorticity maximum
-
-        Parameters
-        ----------
-        filt_by_time: bool, optional
-            Filter by the time threshold
-        time_thresh0: int, optional
-            Time threshold (hours) for basic filtering
-        time_thresh1: int, optional
-            Time threshold (hours) for strong filtering
-        filt_by_dist: bool, optional
-            Filter by the distance threshold (dist. between genesis and lysis)
-        dist_thresh: float, optional
-            Distance in km
-            Used for classifying vortices by distance between genesis and lysis
-        filt_by_land: bool, optional
-            Filter by the proximity to coast given by the land mask (`lsm`)
-        filt_by_domain_bounds: bool, optional
-            Filter by the proximity to domain boundarie, which are taken from
-            the `self.conf` instance if present: lon1, lon2, lat2, lat2
-        lsm: xarray.DataArray, optional
-            Two-dimensional land-sea mask
-            If present, tracks that spend > 0.5 of their lifetime
-            within `coast_rad` radius from the coastline are discarded
-        coast_rad: float, optional
-            Radius in km
-            Used for discarding vortices stuck near the coastline
-        type_thresh: float, optional
-            Ratio of time steps when `vortex_type` is not equal to 0 (PMC) to
-            the total lifetime of the vortex. Should be within 0-1 range.
-            `type_thresh=1./7.` means that if the number of time steps when the
-            vortex is considered a synoptic-scale low or a cold front is more
-            than one-seventh of the whole lifetime of the PMC, then the PMC is
-            excluded as a synoptic-scale disturbance [Watanabe et al., 2016].
-        filt_by_vort: bool, optional
-            Filter by vorticity maximum (strong criteria)
-            [Watanabe et al., 2016, p.2509]
-        vort_thresh0: float, optional
-            Vorticity threshold for strong filtering (s-1)
-        vort_thresh1: float, optional
-            Higher vorticity threshold for strong filtering (s-1)
-        filt_by_percentile: bool, optional
-            Filter strongest cyclones by the percentile of the maximum vort.
-        strong_percentile: float, optional
-            Percentile to define strong category of cyclones
-            E.g. 95 means the top 5% strongest cyclones.
-        """
-        warnings.warn("Use the new classify() method", DeprecatedWarning)
-        self._cats.update({"basic": 1, "moderate": 2, "strong": 3})
-        self._cat_inclusive = True
-        self.data.cat = 0  # Reset categories
-        if filt_by_percentile and filt_by_vort:
-            raise ArgumentError(("Either filt_by_percentile or filt_by_vort" "should be on"))
-        # Save filtering params just in case
-        self._cat_params = {k: v for k, v in locals().items() if k != "self"}
-        # 0. Prepare mask for spatial filtering
-        filt_by_mask = False
-        if isinstance(lsm, xr.DataArray):
-            lon2d, lat2d = np.meshgrid(lsm.longitude, lsm.latitude)
-            l_mask = np.zeros_like(lon2d)
-            if filt_by_land:
-                l_mask = lsm.values
-                filt_by_mask = True
-            boundary_mask = np.zeros_like(lon2d)
-            if filt_by_domain_bounds:
-                filt_by_mask = True
-                inner_idx = True
-                if getattr(self.conf, "lon1", None):
-                    inner_idx &= lon2d >= self.conf.lon1
-                if getattr(self.conf, "lon2", None):
-                    inner_idx &= lon2d <= self.conf.lon2
-                if getattr(self.conf, "lat1", None):
-                    inner_idx &= lat2d >= self.conf.lat1
-                if getattr(self.conf, "lat2", None):
-                    inner_idx &= lat2d <= self.conf.lat2
-                boundary_mask[~inner_idx] = 1.0
-            self.themask = ((boundary_mask == 1.0) | (l_mask == 1.0)) * 1.0
-            themask_c = self.themask.astype("double", order="C")
-            lon2d_c = lon2d.astype("double", order="C")
-            lat2d_c = lat2d.astype("double", order="C")
-
-        for i, ot in self._pbar(self.gb):  # , desc="tracks"):
-            basic_flag = True
-            moderate_flag = True
-            # 1. Minimal filter
-            # 1.1. Filter by duration threshold
-            if filt_by_time and (ot.lifetime_h < time_thresh0):
-                basic_flag = False
-            # 1.2. Filter by land mask and domain boundaries
-            if (
-                basic_flag
-                and filt_by_mask
-                and mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, coast_rad * 1e3) > 0.5
-            ):
-                basic_flag = False
-
-            if basic_flag:
-                self.data.loc[i, "cat"] = self._cats["basic"]
-                # 2. moderate filter
-                # 2.1. Filter by flag assigned by the tracking algorithm
-                if (ot.vortex_type != 0).sum() / ot.shape[0] > type_thresh:
-                    moderate_flag = False
-                # 2.2. Filter by distance between genesis and lysis
-                if filt_by_dist and (ot.gen_lys_dist_km < dist_thresh):
-                    moderate_flag = False
-
-                if moderate_flag:
-                    self.data.loc[i, "cat"] = self._cats["moderate"]
-                    # 3. Strong filter
-                    # 3.1. Filter by vorticity [Watanabe et al., 2016, p.2509]
-                    if filt_by_vort:
-                        if (ot.vo > vort_thresh1).any() or (
-                            ((ot.vo > vort_thresh0).sum() > 1) and (ot.lifetime_h > time_thresh1)
-                        ):
-                            self.data.loc[i, "cat"] = self._cats["strong"]
-            else:
-                self.data.loc[i, "cat"] = self._cats["unknown"]
-        if filt_by_percentile:
-            # 3.2 Filter by percentile-defined vorticity threshold
-            vo_per_track = self["moderate"].gb.apply(lambda x: x.max_vort)
-            if len(vo_per_track) > 0:
-                vo_thresh = np.percentile(vo_per_track, strong_percentile)
-                strong = vo_per_track[vo_per_track > vo_thresh]
-                self.data.loc[strong.index, "cat"] = self._cats["strong"]
-
-        self.is_categorised = True
-
-    def classify(self, conditions, inclusive=True, clear=True):
-        """
-        Classify the loaded tracks.
-
-        This is a more abstract and flexible method, replacing the hard-coded categorise() method.
+        Categorise the loaded tracks.
 
         Parameters
         ----------
@@ -710,7 +564,7 @@ class TrackRun:
             The method assigns numbers to the labels in the same order
             that they are given, starting from number 1 (see examples).
         inclusive: bool, optional
-            If true, a higher category is a subset of lower category;
+            If true, next category in the list is a subset of lower category;
             otherwise categories are independent.
         clear: bool, optional
             If true, existing TrackRun categories are deleted.
@@ -741,13 +595,32 @@ class TrackRun:
         """
         if clear:
             self.clear_categories()
-        start = max(self._cats.values()) + 1
-        cat_dict = {label: num for num, (label, _) in enumerate(conditions, start)}
-        self._cat_inclusive = inclusive
+
+        self.is_cat_inclusive = inclusive
+
+        cond_with_new_labels = []
+        for icond, (label, funcs) in enumerate(conditions):
+            if label == "all":
+                raise ArgumentError("'all' is not a permitted label")
+            if self.is_cat_inclusive:
+                lab = (
+                    label
+                    + self._cat_sep * min(icond, 1)
+                    + self._cat_sep.join([j[0] for j in conditions[:icond][::-1]])
+                )
+            else:
+                lab = label
+            cond_with_new_labels.append((lab, funcs))
+
+        self.cats = pd.DataFrame(
+            index=self.data.index.get_level_values(0).unique(),
+            columns=[cond[0] for cond in cond_with_new_labels],
+        ).fillna(False)
+
         for i, ot in self._pbar(self.gb):
             prev_flag = True
-            for label, funcs in conditions:
-                if inclusive:
+            for label, funcs in cond_with_new_labels:
+                if self.is_cat_inclusive:
                     _flag = prev_flag
                 else:
                     _flag = True
@@ -755,13 +628,16 @@ class TrackRun:
                 for func in funcs:
                     _flag &= func(ot)
                 if _flag:
-                    self.data.loc[i, "cat"] = cat_dict[label]
-                if inclusive:
+                    self.cats.loc[i, label] = True
+                if self.is_cat_inclusive:
                     prev_flag = _flag
-        self._cats.update(cat_dict)
         self.is_categorised = True
 
-    def categorise_by_percentile(self, subset="unknown", perc=95, by="max_vort", oper="ge"):
+    def categorise(self, *args, **kwargs):
+        """Alias for classify()."""
+        return self.classify(*args, **kwargs)
+
+    def categorise_by_percentile(self, subset=None, perc=95, by="max_vort", oper="ge"):
         """
         Categorise by percentile.
 
@@ -782,12 +658,12 @@ class TrackRun:
         --------
         >>> from octant.core import TrackRun
         >>> tr = TrackRun(path_to_directory_with_tracks)
-        >>> tr._cats
-        {'unknown': 0}
+        >>> tr.is_categorised
+        False
         >>> tr.categorise_by_percentile(perc=90, oper="gt")
-        >>> tr._cats
-        {'unknown': 0, 'max_vort__gt__90pc': 1}
-        >>> tr.size("unknown")
+        >>> tr.cat_labels
+        ['max_vort__gt__90pc']
+        >>> tr.size()
         71
         >>> tr.size("max_vort__gt__90pc")
         7
@@ -801,19 +677,27 @@ class TrackRun:
         if oper not in allowed_ops:
             raise ArgumentError(f"oper={oper} should be one of {allowed_ops}")
         op = getattr(operator, oper)
-        if subset == "unknown":
+        if subset is None:
             label = ""
         else:
-            label = f"{subset}__with__"
-        label += f"{by}__{oper}__{perc}pc"
-        assert label not in self._cats, f"New label={label} clashes with existing one"
+            label = f"{self._cat_sep}{subset}"
+        label = f"{by}__{oper}__{perc}pc" + label
+
         v_per_track = self[subset].gb.apply(lambda x: getattr(x, by))
         if len(v_per_track) > 0:
-            cat_id = max(self._cats.values()) + 1
+            # If this subset is not empty, create a new column in categories
+            if self.cats is None:
+                self.cats = pd.DataFrame(
+                    index=self.data.index.get_level_values(0).unique(), columns=[label]
+                ).fillna(False)
+            else:
+                self.cats[label] = False
+            # Find numerical threshold with the given percentage
             thresh = np.percentile(v_per_track, perc)
+            # Find all tracks above it
             above_thresh = v_per_track[op(v_per_track, thresh)]
-            self.data.loc[above_thresh.index, "cat"] = cat_id
-            self._cats.update({label: cat_id})
+            # Punch the corresponding elements in cats
+            self.cats.loc[above_thresh.index, label] = True
             self.is_categorised = True
 
     def clear_categories(self, subset=None, inclusive=None):
@@ -827,50 +711,48 @@ class TrackRun:
         subset: str, optional
             If None (default), all categories are removed.
         inclusive: bool or None, optional
-            If supplied, is used instead of _cat_inclusive attribute.
+            If supplied, is used instead of is_cat_inclusive attribute.
 
         Examples
         --------
         Inclusive categories
 
         >>> tr = TrackRun(path_to_directory_with_tracks)
-        >>> tr._cats
-        {'unknown': 0, 'pmc': 1, 'max_vort__ge__90pc': 2}
-        >>> tr._cat_inclusive
+        >>> tr.is_cat_inclusive
         True
+        >>> tr.cat_labels
+        ['pmc', 'max_vort__ge__90pc|pmc']
         >>> tr.clear_categories(subset='pmc')
-        >>> tr._cats
-        {'unknown': 0}
+        >>> tr.cat_labels
+        []
 
         Non-inclusive
 
         >>> tr = TrackRun(path_to_directory_with_tracks)
-        >>> tr._cats
-        {'unknown': 0, 'pmc': 1, 'max_vort__ge__90pc': 2}
+        >>> tr.cat_labels
+        ['pmc', 'max_vort__ge__90pc|pmc']
         >>> tr.clear_categories(subset='pmc', inclusive=False)
-        >>> tr._cats
-        {'unknown': 0, 'max_vort__ge__90pc': 2}
+        >>> tr.cat_labels
+        ['max_vort__ge__90pc|pmc']
         """
         if inclusive is not None:
             inc = inclusive
         else:
-            inc = self._cat_inclusive
+            inc = self.is_cat_inclusive
         if subset is None:
             # clear all categories
-            self.data.cat = 0
-            self._cats = {"unknown": 0}
+            self.cats = None
         else:
-            cat_id = self._cats[subset]
-            # Do not use self[subset].cat = 0 ! - SettingWithCopyWarning
+            # Do not use self[subset].blah = 0 ! - SettingWithCopyWarning
             if inc:
-                self.data.loc[self.data.cat >= cat_id, "cat"] = cat_id - 1
-                self._cats = {k: v for k, v in self._cats.items() if v < cat_id}
+                self.cats = self.cats.drop(
+                    columns=[col for col in self.cats.columns.values if subset in col]
+                )
             else:
-                self.data.loc[self.data.cat == cat_id, "cat"] = 0
-                self._cats.pop(subset)
-        if self._cats == {"unknown": 0}:
+                self.cats = self.cats.drop(columns=subset)
+        if len(self.cat_labels) == 0:
             self.is_categorised = False
-            self._cat_inclusive = False
+            self.is_cat_inclusive = False
 
     def match_tracks(
         self,
@@ -920,7 +802,7 @@ class TrackRun:
         # Recursive call for each of the available categies
         if subset is None:
             result = {}
-            for subset_key in self._cats.keys():
+            for subset_key in self.cat_labels:
                 result[subset_key] = self.match_tracks(
                     others,
                     subset=subset_key,
@@ -1099,7 +981,7 @@ class TrackRun:
         # Recursive call for each of the available categies
         if subset is None:
             result = {}
-            for subset_key in self._cats.keys():
+            for subset_key in self.cat_labels:
                 result[subset_key] = self.density(
                     lon1d,
                     lat1d,

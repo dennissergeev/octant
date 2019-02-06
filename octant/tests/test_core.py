@@ -10,7 +10,7 @@ import numpy as np
 import numpy.testing as npt
 
 from octant import core, parts
-from octant.exceptions import ArgumentError, DeprecatedWarning, GridError, LoadError
+from octant.exceptions import ArgumentError, GridError, LoadError
 
 import pandas as pd
 
@@ -114,40 +114,38 @@ def test_archive(trackrun):
 def test_categorise_by_percentile(trackrun):
     """Categorise TrackRun by percentile."""
     trackrun.categorise_by_percentile()
-    assert trackrun._cats == {"unknown": 0, "max_vort__ge__95pc": 1}
+    assert trackrun.cat_labels == ["max_vort__ge__95pc"]
     assert trackrun.size("max_vort__ge__95pc") == 4
     with pytest.raises(ArgumentError):
         trackrun.categorise_by_percentile(oper="blah")
 
 
-def test_categorise(trackrun):
-    """Use cached TrackRun instance and test categorise() method."""
-    with pytest.warns(DeprecatedWarning):
-        trackrun.clear_categories()
-        trackrun.categorise()
-        assert trackrun.is_categorised
-        assert trackrun.size("basic") == 31
-        assert trackrun.size("moderate") == 10
-        assert trackrun.size("strong") == 1
-
-
-def test_clear_categories(trackrun):
-    """Use cached TrackRun and test removing categories."""
-    trackrun.clear_categories(subset="moderate", inclusive=False)
-    assert trackrun.is_categorised
-    assert trackrun._cat_inclusive
-    assert trackrun._cats == {"unknown": 0, "basic": 1, "strong": 3}
-    assert trackrun.size("basic") == 22
-    assert trackrun.size("strong") == 1
+# def test_categorise(trackrun):
+#     """Use cached TrackRun instance and test categorise() method."""
+#     with pytest.warns(DeprecatedWarning):
+#         trackrun.clear_categories()
+#         trackrun.categorise()
+#         assert trackrun.is_categorised
+#         assert trackrun.size("basic") == 31
+#         assert trackrun.size("moderate") == 10
+#         assert trackrun.size("strong") == 1
+# def test_clear_categories(trackrun):
+#     """Use cached TrackRun and test removing categories."""
+#     trackrun.clear_categories(subset="moderate", inclusive=False)
+#     assert trackrun.is_categorised
+#     assert trackrun._cat_inclusive
+#     assert trackrun._cats == {"unknown": 0, "basic": 1, "strong": 3}
+#     assert trackrun.size("basic") == 22
+#     assert trackrun.size("strong") == 1
 
 
 def test_clear_categories_all(trackrun):
     """Use cached TrackRun and test removing categories."""
     trackrun.clear_categories()
     assert not trackrun.is_categorised
-    assert not trackrun._cat_inclusive
-    assert trackrun._cats == {"unknown": 0}
-    assert (trackrun.data.cat == 0).all()
+    assert not trackrun.is_cat_inclusive
+    assert trackrun.cat_labels == []
+    assert trackrun.cats is None
 
 
 def test_classify(trackrun):
@@ -164,8 +162,24 @@ def test_classify(trackrun):
     ]
     trackrun.classify(conds, inclusive=False)
     assert trackrun.is_categorised
-    assert trackrun.size("a") == 21
+    assert trackrun.size("a") == 31
     assert trackrun.size("b") == 11
+
+
+def test_classify_argumenterror(trackrun):
+    """Test error raising in classify()."""
+    conds = [
+        ("blah", [lambda ot: ot.lifetime_h >= 6]),
+        (
+            "all",
+            [
+                lambda ot: (ot.vortex_type != 0).sum() / ot.shape[0] < 0.2,
+                lambda ot: ot.gen_lys_dist_km > 300.0,
+            ],
+        ),
+    ]
+    with pytest.raises(ArgumentError):
+        trackrun.classify(conds, inclusive=False)
 
 
 def test_classify_incl(trackrun):
@@ -183,12 +197,12 @@ def test_classify_incl(trackrun):
     trackrun.classify(conds, inclusive=True)
     assert trackrun.is_categorised
     assert trackrun.size("a") == 31
-    assert trackrun.size("b") == 10
+    assert trackrun.size("b|a") == 10
 
 
 def test_match_bs2000(trackrun, ref_set):
     """Use cached TrackRun and tracks from ref_set to test match_tracks() method."""
-    subset = "b"
+    subset = "b|a"
     match_pairs, dm = trackrun.match_tracks(
         ref_set, subset=subset, method="bs2000", beta=50.0, return_dist_matrix=True
     )
@@ -201,10 +215,10 @@ def test_match_bs2000(trackrun, ref_set):
 def test_density_cell_point(trackrun):
     """Calculate cell point density from cached TrackRun."""
     dens = trackrun.density(
-        lon1d=lon1d, lat1d=lat1d, subset="unknown", by="point", weight_by_area=False
+        lon1d=lon1d, lat1d=lat1d, subset="all", by="point", weight_by_area=False
     )
     assert isinstance(dens, xr.DataArray)
-    assert dens.values.sum() == trackrun["unknown"].shape[0]
+    assert dens.values.sum() == trackrun["all"].shape[0]
     assert lat1d.shape + lon1d.shape == dens.shape
     actual_dens = np.load(TEST_DATA / "density_cell_point.npy")
     npt.assert_allclose(actual_dens, dens.values)
@@ -213,15 +227,10 @@ def test_density_cell_point(trackrun):
 def test_density_cell_point_grid_bounds(trackrun):
     """Calculate cell point density with different grid from cached TrackRun."""
     dens = trackrun.density(
-        lon1d=lon1d,
-        lat1d=lat1d,
-        subset="unknown",
-        grid_centres=False,
-        by="point",
-        weight_by_area=False,
+        lon1d=lon1d, lat1d=lat1d, subset="a", grid_centres=False, by="point", weight_by_area=False
     )
     assert isinstance(dens, xr.DataArray)
-    assert dens.values.sum() == trackrun["unknown"].shape[0]
+    assert dens.values.sum() == trackrun["a"].shape[0]
     assert lat1d.shape[0] - 1 == dens.shape[0]
     assert lon1d.shape[0] - 1 == dens.shape[1]
 

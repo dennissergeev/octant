@@ -29,6 +29,7 @@ install:
   - source activate test_env
   - conda list
   - python setup.py develop
+  - git status
 
 script:
   - if [[ "$CONDA_ENV" == "docs" ]]; then

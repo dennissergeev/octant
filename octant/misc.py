@@ -35,7 +35,6 @@ def calc_all_dens(tr_obj, lon2d, lat2d, subsets=None, density_types=DENSITY_TYPE
         2D array of latitudes
     subsets: list, optional
         Subsets of `TrackRun` to process. By default, all subsets are processed.
-        If `TrackRun` is categorised, "unknown" subset is omitted.
     density_types: list, optional
         Types of cyclone density
     **kwargs: dict
@@ -52,9 +51,9 @@ def calc_all_dens(tr_obj, lon2d, lat2d, subsets=None, density_types=DENSITY_TYPE
 
     if subsets is None:
         if tr_obj.is_categorised:
-            subsets = [i for i in tr_obj._cats.keys() if i != "unknown"]
+            subsets = tr_obj.cat_labels
         else:
-            subsets = ["unknown"]
+            subsets = None
     else:
         if not isinstance(subsets, Iterable) or isinstance(subsets, str):
             raise ArgumentError("`subsets` should be a sequence of strings")

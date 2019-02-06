@@ -58,3 +58,15 @@ class ConcatenationError(OctantError):
     """Raised when there is something wrong with extend() method."""
 
     pass
+
+
+class SelectError(OctantError):
+    """Raised when wrong subset category is selected."""
+
+    pass
+
+
+class NotCategorisedError(OctantError):
+    """Raised when operation on categories cannot proceed because TrackRun is not categorised."""
+
+    pass
