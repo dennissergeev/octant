@@ -29,6 +29,8 @@ _counter = itertools.count()
 lon1d = np.arange(-15.0, 45.1, 1)
 lat1d = np.arange(65.0, 80.1, 1)
 
+# TODO: tests for to_/from_archive()
+
 
 @contextlib.contextmanager
 def create_tmp_file(suffix=".h5", allow_cleanup_failure=False):

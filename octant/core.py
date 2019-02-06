@@ -497,7 +497,6 @@ class TrackRun:
                         setattr(self.conf, field, None)
         self.sources.extend(other.sources)
 
-        # FIXME: concatenate self.cats
         new_data = pd.concat([self.data, other.data], sort=False)
         new_track_idx = new_data.index.get_level_values(0).to_series()
         new_track_idx = new_track_idx.ne(new_track_idx.shift()).cumsum() - 1
@@ -506,6 +505,14 @@ class TrackRun:
             [new_track_idx, new_data.index.get_level_values(1)], names=new_data.index.names
         )
         self.data = new_data.set_index(mux)
+
+        # Concatenate categories
+        new_cats = pd.concat([self.cats, other.cats], sort=False)
+        new_track_idx = new_cats.index.get_level_values(0).to_series()
+        new_track_idx = new_track_idx.ne(new_track_idx.shift()).cumsum() - 1
+
+        ix = pd.Index(new_track_idx, name=new_cats.index.name)
+        self.cats = new_cats.set_index(ix)
 
     def time_slice(self, start=None, end=None):
         """
