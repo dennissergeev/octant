@@ -20,6 +20,12 @@ class DeprecatedWarning(OctantWarning):
     pass
 
 
+class InconsistencyWarning(OctantWarning):
+    """Something is inconsistent, e.g. TrackRun metadata."""
+
+    pass
+
+
 class OctantError(Exception):
     """Base class for errors in octant package."""
 
@@ -56,5 +62,17 @@ class GridError(OctantError):
 
 class ConcatenationError(OctantError):
     """Raised when there is something wrong with extend() method."""
+
+    pass
+
+
+class SelectError(OctantError):
+    """Raised when wrong subset category is selected."""
+
+    pass
+
+
+class NotCategorisedError(OctantError):
+    """Raised when operation on categories cannot proceed because TrackRun is not categorised."""
 
     pass

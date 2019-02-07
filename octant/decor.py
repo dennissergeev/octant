@@ -120,7 +120,7 @@ class ReprTrackRun:
         cells = []
         if self.trackrun.is_categorised:
             cells.append('<tr class="octant octant-ra">')
-            cells.append(f'<td rowspan="{len(self.trackrun._cats)+1}">Categories</td>')
+            cells.append(f'<td rowspan="{len(self.trackrun.cat_labels)+2}">Categories</td>')
             cells.append('<tr class="octant">')
             cells.append(
                 '<td class="octant octant-la"></td>'
@@ -129,16 +129,18 @@ class ReprTrackRun:
             )
             cells.append("</tr>")
             cells.append("</tr>")
-            for cat_label in self.trackrun._cats.keys():
-                if cat_label != "unknown":
-                    cells.append('<tr class="octant">')
-                    cells.append(
-                        '<td class="octant octant-ra">of which</td>'
-                        '<td class="octant octant-ra"'
-                        f'colspan="{self.ncol-2}">{self.trackrun.size(cat_label)}</td>'
-                        f'<td class="octant octant-la">{cat_label}</td>'
-                    )
-                    cells.append("</tr>")
+            if self.trackrun.is_categorised:
+                _pre = '<td class="octant octant-ra">of which</td>'
+            else:
+                _pre = ""
+            for cat_label in self.trackrun.cat_labels:
+                cells.append('<tr class="octant">')
+                cells.append(
+                    _pre + '<td class="octant octant-ra"'
+                    f'colspan="{self.ncol-2}">{self.trackrun.size(cat_label)}</td>'
+                    f'<td class="octant octant-la">{cat_label}</td>'
+                )
+                cells.append("</tr>")
         else:
             # Total number of tracks
             cells.append('<tr class="octant">')
@@ -191,17 +193,16 @@ class ReprTrackRun:
             summary.append(" | ".join(self.trackrun.data.columns))
 
         if self.trackrun.is_categorised:
-            if self.trackrun._cat_inclusive:
+            if self.trackrun.is_cat_inclusive:
                 _pre = "of which "
             else:
                 _pre = ""
             summary.append("\nCategories:")
             summary.append("         {:>8d} in total".format(self.trackrun.size()))
-            for cat_label in self.trackrun._cats.keys():
-                if cat_label != "unknown":
-                    summary.append(
-                        "{}{:>8d} are {}".format(_pre, self.trackrun.size(cat_label), cat_label)
-                    )
+            for cat_label in self.trackrun.cat_labels:
+                summary.append(
+                    "{}{:>8d} are {}".format(_pre, self.trackrun.size(cat_label), cat_label)
+                )
 
         if self.trackrun.sources:
             summary.append("\nSources:")
