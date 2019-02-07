@@ -38,7 +38,7 @@ script:
     fi;
 
 after_success:
-  - if [[ "$CONDA_ENV" != "docs" ]]; then
+  - if [[ "$CONDA_ENV" != "docs" ]] && [[ `git rev-parse --abbrev-ref HEAD` == "master" ]]; then
       conda install conda-build anaconda-client;
       conda list;
       bash conda.recipe/conda_upload.sh;
