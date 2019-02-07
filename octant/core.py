@@ -16,6 +16,7 @@ from .exceptions import (
     ArgumentError,
     ConcatenationError,
     GridError,
+    InconsistencyWarning,
     LoadError,
     MissingConfWarning,
     NotCategorisedError,
@@ -290,11 +291,19 @@ class TrackRun:
             return self.data
         else:
             if self.is_categorised:
-                if subset not in self.cats.columns:
-                    raise SelectError(
-                        f"'{subset}' is not among categories: {', '.join(self.cats.columns)}"
-                    )
-                idx = self.cats[self.cats[subset]].index
+                if isinstance(subset, str):
+                    subsets = [subset]
+                else:
+                    # if list of several subsets is given
+                    subsets = subset
+                selected = True
+                for label in subsets:
+                    if label not in self.cats.columns:
+                        raise SelectError(
+                            f"'{label}' is not among categories: {', '.join(self.cats.columns)}"
+                        )
+                    selected &= self.cats[label]
+                idx = self.cats[selected].index
                 return self.data.loc[idx, :]
             else:
                 raise NotCategorisedError
@@ -411,14 +420,19 @@ class TrackRun:
         with pd.HDFStore(filename, mode="r") as store:
             df = store[ARCH_KEY]
             metadata = store.get_storer(ARCH_KEY).attrs.metadata
-            _is_cat = metadata["is_categorised"]
-            if _is_cat:
+            if metadata["is_categorised"]:
                 try:
                     df_cat = store.get(ARCH_KEY_CAT)
                 except KeyError:
-                    # FIXME
-                    # track_idx
-                    df_cat = pd.DataFrame(columns=cls._mux_names[0])
+                    msg = (
+                        "TrackRun is saved as categorised, but the file does not have"
+                        f" {ARCH_KEY_CAT} with category data;"
+                        " replacing self.cats with an empty DataFrame."
+                    )
+                    warnings.warn(msg, InconsistencyWarning)
+                    df_cat = pd.DataFrame(
+                        index=df[cls._mux_names[0]].unique(), columns=[cls._mux_names[0]]
+                    )
         out = cls()
         if df.shape[0] > 0:
             out.data = OctantTrack.from_mux_df(df.set_index(cls._mux_names))
@@ -426,8 +440,8 @@ class TrackRun:
             out.data = OctantTrack.from_mux_df(df)
         metadata["conf"] = TrackSettings.from_dict(metadata["conf"])
         out.__dict__.update(metadata)
-        if _is_cat:
-            out.cats = df_cat.set_index(cls._mux_names[0])
+        if out.is_categorised:
+            out.cats = df_cat.set_index(cls._mux_names[0]).astype(bool)
         return out
 
     def to_archive(self, filename):
@@ -454,7 +468,7 @@ class TrackRun:
             store.get_storer(ARCH_KEY).attrs.metadata = metadata
             # Store DataFrame with categorisation data
             if self.is_categorised:
-                df_cat = pd.DataFrame.from_records(self.cats.to_records(index=True))
+                df_cat = pd.DataFrame.from_records(self.cats.astype("uint8").to_records(index=True))
                 store.put(ARCH_KEY_CAT, df_cat)
 
     def extend(self, other, adapt_conf=True):
@@ -619,10 +633,16 @@ class TrackRun:
                 lab = label
             cond_with_new_labels.append((lab, funcs))
 
-        self.cats = pd.DataFrame(
-            index=self.data.index.get_level_values(0).unique(),
-            columns=[cond[0] for cond in cond_with_new_labels],
-        ).fillna(False)
+        self.cats = pd.concat(
+            [
+                self.cats,
+                pd.DataFrame(
+                    index=self.data.index.get_level_values(0).unique(),
+                    columns=[cond[0] for cond in cond_with_new_labels],
+                ).fillna(False),
+            ],
+            axis="columns",
+        )
 
         for i, ot in self._pbar(self.gb):
             prev_flag = True

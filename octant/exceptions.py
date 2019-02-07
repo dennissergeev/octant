@@ -20,6 +20,12 @@ class DeprecatedWarning(OctantWarning):
     pass
 
 
+class InconsistencyWarning(OctantWarning):
+    """Something is inconsistent, e.g. TrackRun metadata."""
+
+    pass
+
+
 class OctantError(Exception):
     """Base class for errors in octant package."""
 
