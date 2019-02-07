@@ -2,6 +2,7 @@
 octant/utils.c
 docs/source/examples/*.ipynb
 docs/source/examples/index.rst
+examples/test.h5
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

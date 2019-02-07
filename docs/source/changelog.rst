@@ -3,6 +3,21 @@ Changelog
 
 .. default-role:: py:obj
 
+v0.0.20
+-------
+
+:Release: v0.0.20
+:Date: 7 February 2019
+
+* Rewrite the internals of categorisation metadata to allow for multiple independent categories
+* Add `cats` DataFrame as `TrackRun` attribute
+* Deprecate the old `TrackRun.categorise()` method, now it is an alias for `classify()`
+* Update example notebooks
+* Add `lmask_threshold` keyword argument to `misc.check_by_mask()`
+* Add new exception classes
+* Fix some minor bugs
+
+
 v0.0.19
 -------
 
