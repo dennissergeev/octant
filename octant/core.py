@@ -145,11 +145,6 @@ class OctantTrack(pd.DataFrame):
         """Maximum vorticity of the cyclone track."""
         return np.nanmax(self.vo.values)
 
-    @property
-    def mean_vort(self):
-        """Mean vorticity of the cyclone track."""
-        return np.nanmean(self.vo.values)
-
     def within_rectangle(self, lon0, lon1, lat0, lat1, thresh=1):
         """
         Check that OctantTrack is within a rectangle for a fraction of its lifetime.
@@ -665,36 +660,50 @@ class TrackRun:
         """Alias for classify()."""
         return self.classify(*args, **kwargs)
 
-    def categorise_by_percentile(self, subset=None, perc=95, by="max_vort", oper="ge"):
+    def categorise_by_percentile(self, by, subset=None, perc=95, oper="ge"):
         """
         Categorise by percentile.
 
         Parameters
         ----------
+        by: str or tuple
+            Property of OctantTrack to apply percentile to.
+            If tuple is passed, it should be of form (label, function), where the function
+            takes OctantTrack as the only parameter and returns one value for each track.
         subset: str, optional
             Subset of Trackrun to apply percentile to.
         perc: float, optional
             Percentile to define a category of cyclones.
             E.g. (perc=95, oper='ge') is the top 5% cyclones.
-        by: str, optional
-            Property of OctantTrack to apply percentile to.
         oper: str, optional
             Math operator to select track above or below the percentile threshold.
             Can be one of (lt|le|gt|ge).
 
         Examples
         --------
-        >>> from octant.core import TrackRun
+        Existing property: `max_vort`
         >>> tr = TrackRun(path_to_directory_with_tracks)
         >>> tr.is_categorised
         False
-        >>> tr.categorise_by_percentile(perc=90, oper="gt")
+        >>> tr.categorise_by_percentile("max_vort", perc=90, oper="gt")
         >>> tr.cat_labels
         ['max_vort__gt__90pc']
         >>> tr.size()
         71
         >>> tr.size("max_vort__gt__90pc")
         7
+
+        Custom function
+
+        >>> tr = TrackRun(path_to_directory_with_tracks)
+        >>> tr.is_categorised
+        False
+        >>> tr.categorise_by_percentile(by=("slp_min", lambda x: np.nanmin(x.slp.values)),
+                                        perc=20, oper="le")
+        >>> tr.cat_labels
+        ['slp_min__le__20pc']
+        >>> tr.size("slp_min__le__10pc")
+        14
 
 
         See Also
@@ -709,23 +718,27 @@ class TrackRun:
             label = ""
         else:
             label = f"{self._cat_sep}{subset}"
-        label = f"{by}__{oper}__{perc}pc" + label
+        if isinstance(by, str):
+            by_label = by
+            func = lambda x: getattr(x, by)  # noqa
+        else:
+            by_label, func = by
+        label = f"{by_label}__{oper}__{perc}pc" + label
 
-        v_per_track = self[subset].gb.apply(lambda x: getattr(x, by))
+        v_per_track = self[subset].gb.apply(func)
         if len(v_per_track) > 0:
             # If this subset is not empty, create a new column in categories
-            if self.cats is None:
-                self.cats = pd.DataFrame(
-                    index=self.data.index.get_level_values(0).unique(), columns=[label]
-                ).fillna(False)
-            else:
-                self.cats[label] = False
+            new_col = pd.DataFrame(
+                index=self.data.index.get_level_values(0).unique(), columns=[label]
+            ).fillna(False)
             # Find numerical threshold with the given percentage
             thresh = np.percentile(v_per_track, perc)
             # Find all tracks above it
             above_thresh = v_per_track[op(v_per_track, thresh)]
             # Punch the corresponding elements in cats
-            self.cats.loc[above_thresh.index, label] = True
+            new_col.loc[above_thresh.index, label] = True
+            # Append the new category column to cats
+            self.cats = pd.concat([self.cats, new_col], axis=1)
             self.is_categorised = True
 
     def clear_categories(self, subset=None, inclusive=None):

@@ -38,7 +38,6 @@ script:
     fi;
 
 after_success:
-  - echo "branch =" `git rev-parse --abbrev-ref HEAD`
   - if [[ "$CONDA_ENV" != "docs" ]]; then
       conda install conda-build anaconda-client;
       conda list;

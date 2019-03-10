@@ -113,13 +113,22 @@ def test_archive(trackrun):
         assert isinstance(another.conf, parts.TrackSettings)
 
 
-def test_categorise_by_percentile(trackrun):
+def test_categorise_by_percentile_simple(trackrun):
     """Categorise TrackRun by percentile."""
-    trackrun.categorise_by_percentile()
+    trackrun.categorise_by_percentile("max_vort")
     assert trackrun.cat_labels == ["max_vort__ge__95pc"]
     assert trackrun.size("max_vort__ge__95pc") == 4
     with pytest.raises(ArgumentError):
-        trackrun.categorise_by_percentile(oper="blah")
+        trackrun.categorise_by_percentile("max_vort", oper="blah")
+
+
+def test_categorise_by_percentile_func(trackrun):
+    """Categorise TrackRun by percentile."""
+    trackrun.categorise_by_percentile(
+        by=("mean_vort", lambda x: np.nanmean(x.vo.values)), perc=10, oper="lt"
+    )
+    assert "mean_vort__lt__10pc" in trackrun.cat_labels
+    assert trackrun.size("mean_vort__lt__10pc") == 8
 
 
 # def test_categorise(trackrun):
