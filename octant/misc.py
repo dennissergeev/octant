@@ -8,7 +8,7 @@ import xarray as xr
 
 from .decor import get_pbar
 from .exceptions import ArgumentError
-from .utils import mask_tracks
+from .utils import mask_tracks, great_circle
 
 DENSITY_TYPES = ["point", "track", "genesis", "lysis"]
 
@@ -150,7 +150,7 @@ def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, rad=50.0, mask_thresh=0.5):
     >>> import xarray as xr
     >>> land_mask = xr.open_dataarray(path_to_land_mask_file)
     >>> tr = TrackRun(path_to_directory_with_tracks)
-    >>> random_track = tr.loc[123]
+    >>> random_track = tr.data.loc[123]
     >>> check_by_mask(random_track, tr, land_mask, lmask_thresh=0.5)
     True
 
@@ -178,3 +178,64 @@ def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, rad=50.0, mask_thresh=0.5):
     lat2d_c = lat2d.astype("double", order="C")
     flag = mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, rad * 1e3) < mask_thresh
     return flag
+
+
+def check_far_from_boundaries(ot, lonlat_box, dist=200e3):
+    """
+    Check if track is not too close to boundaries.
+
+    Parameters
+    ----------
+    ot: octant.core.OctantTrack
+        Individual cyclone-track object
+    lonlat_box: list
+        Boundaries of longitude-latitude rectangle (lon_min, lon_max, lat_min, lat_max)
+        Note that the order matters!
+    dist: float
+        Minimum distance from a boundary in metres
+
+    Returns
+    -------
+    result: bool
+        True if track is not too close to boundaries
+
+    Examples
+    --------
+    >>> from octant.core import TrackRun
+    >>> tr = TrackRun("path/to/directory/with/tracks")
+    >>> random_track = tr.data.loc[123]
+    >>> check_far_from_boundaries(random_track, lonlat_box=[-10, 20, 60, 80], dist=250e3)
+    True
+
+    >>> from functools import partial
+    >>> conds = [
+            ('bound', [partial(check_far_from_boundaries, lonlat_box=tr.conf.extent)])
+        ]  # construct a condition for tracks to be within the boundaries taken from the TrackRun
+    >>> tr.classify(conds)
+    >>> tr.cat_labels
+    ['bound']
+
+    See Also
+    --------
+    octant.core.TrackRun.classify, octant.utils.check_by_mask
+    """
+    # Preliminary check: track is within the rectangle
+    # (Could be the case for a small rectangle.)
+    result = (
+        (ot.lon >= lonlat_box[0])
+        & (ot.lon <= lonlat_box[1])
+        & (ot.lat >= lonlat_box[2])
+        & (ot.lat <= lonlat_box[3])
+    ).all()
+
+    # Main check
+    for i, ll in enumerate(lonlat_box):
+
+        def _func(row):
+            args = [row.lon, row.lon, row.lat, row.lat].copy()
+            args[2 * (i // 2)] = ll
+            return great_circle(*args)
+
+        result &= (ot.apply(_func, axis=1) > dist).all()
+
+    return result

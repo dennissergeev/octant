@@ -682,6 +682,7 @@ class TrackRun:
         Examples
         --------
         Existing property: `max_vort`
+
         >>> tr = TrackRun(path_to_directory_with_tracks)
         >>> tr.is_categorised
         False
