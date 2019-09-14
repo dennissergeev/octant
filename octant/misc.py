@@ -227,6 +227,8 @@ def check_far_from_boundaries(ot, lonlat_box, dist=200e3):
         & (ot.lat >= lonlat_box[2])
         & (ot.lat <= lonlat_box[3])
     ).all()
+    if not result:
+        return False
 
     # Main check
     for i, ll in enumerate(lonlat_box):
