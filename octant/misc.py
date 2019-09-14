@@ -8,7 +8,7 @@ import xarray as xr
 
 from .decor import get_pbar
 from .exceptions import ArgumentError
-from .utils import mask_tracks, great_circle
+from .utils import great_circle, mask_tracks
 
 DENSITY_TYPES = ["point", "track", "genesis", "lysis"]
 
