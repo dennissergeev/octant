@@ -10,7 +10,7 @@ DFLT_TRANSFORM = ccrs.PlateCarree()
 DFLT_COLOR = "C0"
 
 
-def plot(df, ax=None, transform=DFLT_TRANSFORM, **kwargs):
+def plot(df, ax=None, transform=DFLT_TRANSFORM, add_markers=True, **kwargs):
     """
     Draw cyclone track using as a line plot.
 
@@ -26,8 +26,11 @@ def plot(df, ax=None, transform=DFLT_TRANSFORM, **kwargs):
         If not given, a new figure with cartopy geoaxes is created
     transform: matplotlib transform, optional
         Default: cartopy.crs.PlateCarree()
+    add_markers: bool, optional
+        If True, add circles to show start/end of the track
     kwargs: other keyword arguments
         Options to pass to matplotlib plot() function
+
     Returns
     -------
     ax: matplotlib axes object
@@ -55,10 +58,11 @@ def plot(df, ax=None, transform=DFLT_TRANSFORM, **kwargs):
     color = kwargs.pop("color", DFLT_COLOR)
     l, = ax.plot(df.lon, df.lat, color=color, **kwargs, **mapkw)
     color = l.get_color()  # hold color value if None is given
-    ax.plot(
-        df.lon.values[0], df.lat.values[0], marker="o", mfc=color, mec=color, **mapkw
-    )
-    ax.plot(
-        df.lon.values[-1], df.lat.values[-1], marker="o", mfc="w", mec=color, **mapkw
-    )
+    if add_markers:
+        ax.plot(
+            df.lon.values[0], df.lat.values[0], marker="o", mfc=color, mec=color, **mapkw
+        )
+        ax.plot(
+            df.lon.values[-1], df.lat.values[-1], marker="o", mfc="w", mec=color, **mapkw
+        )
     return ax
