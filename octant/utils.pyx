@@ -206,7 +206,7 @@ cpdef double[:, ::1] point_density_rad(double[:, ::1] lon2d,
         for j in range(jmax):
             for i in range(imax):
                 if _great_circle(lonlat[p, 0], lon2d[j, i],
-                                 lonlat[p, 1], lat2d[j, i], r=r) <= rad:
+                                 lonlat[p, 1], lat2d[j, i], r=r) <= dist:
                     count[j, i] = count[j, i] + 1
     return count
 

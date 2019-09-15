@@ -6,6 +6,8 @@ HOUR = np.timedelta64(1, "h")
 M2KM = 1e-3
 KM2M = 1e3
 
+FILLVAL = 9e20
+
 COLUMNS = ["lon", "lat", "vo", "time", "area", "vortex_type"]
 ARCH_KEY = "trackrun"
 ARCH_KEY_CAT = ARCH_KEY + "_categories"

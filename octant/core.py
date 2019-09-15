@@ -24,7 +24,7 @@ from .exceptions import (
 )
 from .grid import cell_bounds, cell_centres, grid_cell_areas
 from .misc import _exclude_by_first_day, _exclude_by_last_day
-from .params import ARCH_KEY, ARCH_KEY_CAT, COLUMNS, EARTH_RADIUS, HOUR, KM2M, M2KM
+from .params import ARCH_KEY, ARCH_KEY_CAT, COLUMNS, EARTH_RADIUS, FILLVAL, HOUR, KM2M, M2KM
 from .parts import TrackSettings
 from .utils import (
     distance_metric,
@@ -941,7 +941,7 @@ class TrackRun:
                         #       * (df2.time.values[-1] - df2.time.values[0]
                         #          + df1.time.values[-1] - df2.time.values[0]))
                         thr = time_frac * df2.shape[0]
-                        dist_diff = np.full(new_df1.shape[0], 9e20)
+                        dist_diff = np.full(new_df1.shape[0], FILLVAL)
                         for i, ((x1, y1), (x2, y2)) in enumerate(
                             zip(new_df1[ll].values, df2[ll].values)
                         ):
@@ -962,7 +962,7 @@ class TrackRun:
             # sub_list = [i[0] for i in list(sub_gb)]
             sub_indices = list(sub_gb.indices.keys())
             other_indices = list(other_gb.indices.keys())
-            dist_matrix = np.full((len(sub_gb), len(other_gb)), 9e20)
+            dist_matrix = np.full((len(sub_gb), len(other_gb)), FILLVAL)
             for i, (_, ct) in enumerate(self._pbar(sub_gb, leave=False)):  # , desc="self tracks"):
                 x1, y1, t1 = ct.coord_view
                 for j, (_, other_ct) in enumerate(self._pbar(other_gb, leave=False)):
