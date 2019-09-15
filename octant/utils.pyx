@@ -54,8 +54,10 @@ cpdef double great_circle(double lon1,
         Latitude of the first point
     lat2: double
         Latitude of the second point
-    r: double, optional (default: EARTH_RADIUS)
-        Radius of the sphere in metres
+    r: double, optional
+        Radius of the planet in metres
+        Default: EARTH_RADIUS
+
     Returns
     -------
     dist: double
@@ -188,7 +190,8 @@ cpdef double[:, ::1] track_density_cell(double[:, ::1] lon2d,
 cpdef double[:, ::1] point_density_rad(double[:, ::1] lon2d,
                                        double[:, ::1] lat2d,
                                        double[:, ::1] lonlat,
-                                       double rad):
+                                       double dist,
+                                       double r=EARTH_RADIUS):
     """
     Calculate cyclone density within given radius from each grid point
 
@@ -203,7 +206,7 @@ cpdef double[:, ::1] point_density_rad(double[:, ::1] lon2d,
         for j in range(jmax):
             for i in range(imax):
                 if _great_circle(lonlat[p, 0], lon2d[j, i],
-                                 lonlat[p, 1], lat2d[j, i]) <= rad:
+                                 lonlat[p, 1], lat2d[j, i], r=r) <= rad:
                     count[j, i] = count[j, i] + 1
     return count
 
@@ -211,7 +214,8 @@ cpdef double[:, ::1] point_density_rad(double[:, ::1] lon2d,
 cpdef double[:, ::1] track_density_rad(double[:, ::1] lon2d,
                                        double[:, ::1] lat2d,
                                        double[:, ::1] id_lon_lat,
-                                       double rad):
+                                       double dist,
+                                       double r=EARTH_RADIUS):
     """
     Calculate cyclone track density within given radius from each grid point
 
@@ -233,7 +237,7 @@ cpdef double[:, ::1] track_density_rad(double[:, ::1] lon2d,
                 track_idx = <int>id_lon_lat[p, 0]
                 if prev_track_idx != track_idx:
                     if _great_circle(id_lon_lat[p, 1], lon2d[j, i],
-                                     id_lon_lat[p, 2], lat2d[j, i]) <= rad:
+                                     id_lon_lat[p, 2], lat2d[j, i], r=r) <= dist:
                         count[j, i] = count[j, i] + 1
                         prev_track_idx = track_idx
     return count
@@ -244,7 +248,8 @@ cdef double _masking_loop_func(double[:, ::1] mask,
                                double[:, ::1] lat2d,
                                double lon,
                                double lat,
-                               double rad):
+                               double dist,
+                               double r=EARTH_RADIUS):
     """
     Masking function. See mask_tracks() for explanation.
     """
@@ -255,7 +260,7 @@ cdef double _masking_loop_func(double[:, ::1] mask,
     for j in range(jmax):
         for i in range(imax):
             if _great_circle(lon, lon2d[j, i],
-                             lat, lat2d[j, i]) <= rad:
+                             lat, lat2d[j, i], r=r) <= dist:
                 if mask[j, i] == 1:
                     return 1.
     return 0.
@@ -265,7 +270,8 @@ cpdef double mask_tracks(double[:, ::1] mask,
                          double[:, ::1] lon2d,
                          double[:, ::1] lat2d,
                          double[:, ::1] lonlat,
-                         double rad):
+                         double dist,
+                         double r=EARTH_RADIUS):
     """
     Count how many points of a cyclone track should be masked by their
     proximity to masked values in a 2D array.
@@ -280,12 +286,15 @@ cpdef double mask_tracks(double[:, ::1] mask,
         Array of latitudes corresponding to the mask
     lonlat: double, shape(P, 2)
         Array of track's longitudes and latitudes
-    rad: double
-        Radius to check proximity
+    dist: double
+        Distance in metres to check proximity
+    r: double, optional
+        Radius of the planet in metres
+        Default: EARTH_RADIUS
 
     Returns
     -------
-        Fraction of masked points of the track
+    Fraction of masked points of the track
     """
 
     cdef int p
@@ -296,7 +305,7 @@ cpdef double mask_tracks(double[:, ::1] mask,
     for p in range(pmax):
         points_near_coast += _masking_loop_func(mask, lon2d, lat2d,
                                                 lonlat[p, 0], lonlat[p, 1],
-                                                rad)
+                                                dist, r=r)
     return points_near_coast / pmax
 
 
@@ -307,7 +316,8 @@ cdef double _traj_variance(double[:] x1,
                            double[:] y2,
                            double[:] t2,
                            double alpha=1.,
-                           double beta=100):
+                           double beta=100,
+                           double r=EARTH_RADIUS):
     """
     Calculate cyclone track variance (eq. (3) in Blender and Schubert (2000))
 
@@ -329,6 +339,9 @@ cdef double _traj_variance(double[:] x1,
         Parameter alpha in eq. (3)
     beta: double, optional (default: 100)
         Parameter beta in eq. (3)
+    r: double, optional
+        Radius of the planet in metres
+        Default: EARTH_RADIUS
 
     Returns
     -------
@@ -357,16 +370,16 @@ cdef double _traj_variance(double[:] x1,
         for i2 in range(imax2-1):
             da2 = t2[i2+1] - t2[i2]
             f0 = ( alpha * (_great_circle(x1[i1], x2[i2],
-                                          y1[i1], y2[i2]) ** 2)
+                                          y1[i1], y2[i2], r=r) ** 2)
                   + beta * ((t1[i1] - t2[i2])) ** 2 )
             f1 = ( alpha * (_great_circle(x1[i1+1], x2[i2],
-                                          y1[i1+1], y2[i2]) ** 2)
+                                          y1[i1+1], y2[i2], r=r) ** 2)
                   + beta * ((t1[i1+1] - t2[i2])) ** 2 )
             g0 = ( alpha * (_great_circle(x1[i1], x2[i2+1],
-                                          y1[i1], y2[i2+1]) ** 2)
+                                          y1[i1], y2[i2+1], r=r) ** 2)
                   + beta * ((t1[i1] - t2[i2+1])) ** 2 )
             g1 = ( alpha * (_great_circle(x1[i1+1], x2[i2+1],
-                                          y1[i1+1], y2[i2+1]) ** 2)
+                                          y1[i1+1], y2[i2+1], r=r) ** 2)
                   + beta * ((t1[i1+1] - t2[i2+1])) ** 2 )
             variance_sum += 0.25 * (f0 + f1 + g0 + g1) * da1 * da2
     return variance_sum / (A1 * A2)
@@ -382,7 +395,8 @@ cpdef double distance_metric(double[:] x1,
                              double[:] y2,
                              long[:] t2,
                              double alpha=1.,
-                             double beta=100.):
+                             double beta=100.,
+                             double r=EARTH_RADIUS):
     """
     Calculate the distance metric (eq. (4) in Blender and Schubert (2000))
 
@@ -404,6 +418,9 @@ cpdef double distance_metric(double[:] x1,
         Parameter alpha in eq. (3)
     beta: double, optional (default: 100)
         Parameter beta in eq. (3)
+    r: double, optional
+        Radius of the planet in metres
+        Default: EARTH_RADIUS
 
     Returns
     -------
@@ -438,9 +455,9 @@ cpdef double distance_metric(double[:] x1,
     A1 = t1_s[imax1-1] - t1_s[0]
     A2 = t2_s[imax2-1] - t2_s[0]
 
-    sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta)
-    sigma11 = _traj_variance(x1, y1, t1_s, x1, y1, t1_s, alpha=alpha, beta=beta)
-    sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta)
+    sigma12 = _traj_variance(x1, y1, t1_s, x2, y2, t2_s, alpha=alpha, beta=beta, r=r)
+    sigma11 = _traj_variance(x1, y1, t1_s, x1, y1, t1_s, alpha=alpha, beta=beta, r=r)
+    sigma22 = _traj_variance(x2, y2, t2_s, x2, y2, t2_s, alpha=alpha, beta=beta, r=r)
 
     dm = ((sigma12 - 0.5 * (sigma11 + sigma22)) / (A1 * A2)) ** 0.5
 

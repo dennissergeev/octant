@@ -93,7 +93,7 @@ def _iris_guess_bounds(points, bound_position=0.5):
     return np.array([min_bounds, max_bounds]).transpose()
 
 
-def _quadrant_area(radian_lat_bounds, radian_lon_bounds, radius_of_earth):
+def _quadrant_area(radian_lat_bounds, radian_lon_bounds, r_planet):
     """
     Calculate spherical segment areas.
 
@@ -114,8 +114,8 @@ def _quadrant_area(radian_lat_bounds, radian_lon_bounds, radius_of_earth):
         Array of latitude bounds (radians) of shape (N, 2)
     radian_lon_bounds: numpy.array
         Array of longitude bounds (radians) of shape (N, 2)
-    radius_of_earth: float
-        Radius of the Earth (currently assumed spherical)
+    r_planet: float
+        Radius of the planet (currently assumed spherical)
     """
     # ensure pairs of bounds
     if (
@@ -127,7 +127,7 @@ def _quadrant_area(radian_lat_bounds, radian_lon_bounds, radius_of_earth):
         raise ValueError("Bounds must be [n,2] array")
 
     # fill in a new array of areas
-    radius_sqr = radius_of_earth ** 2
+    radius_sqr = r_planet ** 2
     radian_lat_64 = radian_lat_bounds.astype(np.float64)
     radian_lon_64 = radian_lon_bounds.astype(np.float64)
 
@@ -139,9 +139,9 @@ def _quadrant_area(radian_lat_bounds, radian_lon_bounds, radius_of_earth):
     return np.abs(areas)
 
 
-def grid_cell_areas(lon1d, lat1d, radius=EARTH_RADIUS):
+def grid_cell_areas(lon1d, lat1d, r=EARTH_RADIUS):
     """Simplified iris function to calculate grid cell areas."""
     lon_bounds_radian = np.deg2rad(_iris_guess_bounds(lon1d))
     lat_bounds_radian = np.deg2rad(_iris_guess_bounds(lat1d))
-    area = _quadrant_area(lat_bounds_radian, lon_bounds_radian, radius)
+    area = _quadrant_area(lat_bounds_radian, lon_bounds_radian, r)
     return area

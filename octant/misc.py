@@ -47,6 +47,9 @@ def calc_all_dens(tr_obj, lon2d, lat2d, subsets=None, density_types=DENSITY_TYPE
     da: xarray.DataArray
        4d array with dimensions (subset, dens_type, latitude, longitude)
 
+    See Also
+    --------
+    octant.core.TrackRun.density
     """
     pbar = get_pbar()
 
@@ -115,12 +118,12 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by="M"):
     return counter
 
 
-def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, rad=50.0, mask_thresh=0.5):
+def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, dist=50.0, time_frac=0.5, r=EARTH_RADIUS):
     """
     Check how close the OctantTrack is to masked points.
 
-    Check if the given track spends less than `mask_thresh` of its lifetime
-    within `rad` away from the land or domain boundaries.
+    Check if the given track spends less than `time_frac` of its lifetime
+    within `dist` away from the land or domain boundaries.
 
     This function can be passed to `octant.core.TrackRun.categorise()` to filter
     through cyclone tracks.
@@ -133,17 +136,20 @@ def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, rad=50.0, mask_thresh=0.5):
         (parent) track run instance to get lon/lat boundaries if present
     lsm: xarray.DataArray
         Two-dimensional land-sea mask
-    lmask_thresh: float
+    lmask_thresh: float, optional
         Threshold of `lsm` values, for flexible land-mask filtering
-    rad: float
-        Radius in km, passed to mask_tracks() function
-    mask_thresh: float, optional
+    dist: float, optional
+        distance in km, passed to mask_tracks() function
+    time_frac: float, optional
         Threshold for track's lifetime (0-1)
+    r: float, optional
+        Radius of the planet in metres
+        Default: EARTH_RADIUS
 
     Returns
     -------
     flag: bool
-        The track is far away from the boundaries and land mask at given thresholds.
+        The track is far away from the boundaries and the land mask.
 
     Examples
     --------
@@ -177,7 +183,7 @@ def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, rad=50.0, mask_thresh=0.5):
     themask_c = trackrun.themask.astype("double", order="C")
     lon2d_c = lon2d.astype("double", order="C")
     lat2d_c = lat2d.astype("double", order="C")
-    flag = mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, rad * KM2M) < mask_thresh
+    flag = mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, dist * KM2M, r=r) < time_frac
     return flag
 
 

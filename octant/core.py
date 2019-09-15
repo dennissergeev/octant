@@ -24,7 +24,7 @@ from .exceptions import (
 )
 from .grid import cell_bounds, cell_centres, grid_cell_areas
 from .misc import _exclude_by_first_day, _exclude_by_last_day
-from .params import ARCH_KEY, ARCH_KEY_CAT, COLUMNS, HOUR, M2KM
+from .params import ARCH_KEY, ARCH_KEY_CAT, COLUMNS, EARTH_RADIUS, HOUR, KM2M, M2KM
 from .parts import TrackSettings
 from .utils import (
     distance_metric,
@@ -120,6 +120,7 @@ class OctantTrack(pd.DataFrame):
     @property
     def gen_lys_dist_km(self):
         """Distance between genesis and lysis of the cyclone track in km."""
+        # TODO: include planet radius
         if self.shape[0] > 0:
             return (
                 great_circle(
@@ -154,7 +155,8 @@ class OctantTrack(pd.DataFrame):
         lon0, lon1, lat0, lat1: float
             Boundaries of longitude-latitude rectangle (lon_min, lon_max, lat_min, lat_max)
         time_frac: float, optional
-            Time fraction threshold. By default, set to maximum, i.e. track should be within the box entirely.
+            Time fraction threshold.
+            By default, set to maximum, i.e. track should be within the box entirely.
 
         Returns
         -------
@@ -175,7 +177,7 @@ class OctantTrack(pd.DataFrame):
         time_within = self[
             (self.lon >= lon0) & (self.lon <= lon1) & (self.lat >= lat0) & (self.lat <= lat1)
         ].lifetime_h
-        return time_within / self.lifetime_h >= thresh
+        return time_within / self.lifetime_h >= time_frac
 
     def plot_track(self, ax=None, **kwargs):
         """
@@ -807,9 +809,10 @@ class TrackRun:
         method="simple",
         interpolate_to="other",
         thresh_dist=250.0,
-        time_frac_thresh=0.5,
+        time_frac=0.5,
         return_dist_matrix=False,
         beta=100.0,
+        r=EARTH_RADIUS,
     ):
         """
         Match tracked vortices to a list of vortices from another data source.
@@ -828,7 +831,7 @@ class TrackRun:
         thresh_dist: float, optional
             Radius (km) threshold of distances between vortices.
             Used in 'intersection' and 'simple' methods
-        time_frac_thresh: float, optional
+        time_frac: float, optional
             Fraction of a vortex lifetime used as a threshold in 'intersection'
             and 'simple' methods
         return_dist_matrix: bool, optional
@@ -837,6 +840,10 @@ class TrackRun:
         beta: float, optional
             Parameter used in 'bs2000' method
             E.g. beta=100 corresponds to 10 m/s average steering wind
+        r: float, optional
+            Radius of the planet in metres
+            Default: EARTH_RADIUS
+
         Returns
         -------
         match_pairs: list
@@ -855,9 +862,10 @@ class TrackRun:
                     method=method,
                     interpolate_to=interpolate_to,
                     thresh_dist=thresh_dist,
-                    time_frac_thresh=time_frac_thresh,
+                    time_frac=time_frac,
                     return_dist_matrix=return_dist_matrix,
                     beta=beta,
+                    r=r,
                 )
             return result
 
@@ -882,16 +890,16 @@ class TrackRun:
             for idx, ot in self._pbar(sub_gb):  # , desc="self tracks"):
                 for other_idx, other_ot in self._pbar(other_gb, leave=False):
                     times = other_ot.time.values
-                    time_match_thresh = time_frac_thresh * (times[-1] - times[0]) / HOUR
+                    time_match_thresh = time_frac * (times[-1] - times[0]) / HOUR
 
                     intersect = pd.merge(other_ot, ot, how="inner", left_on="time", right_on="time")
                     n_match_times = intersect.shape[0]
                     if n_match_times > 0:
                         _tstep_h = intersect.time.diff().values[-1] / HOUR
                         dist = intersect[["lon_x", "lon_y", "lat_x", "lat_y"]].apply(
-                            lambda x: great_circle(*x.values), axis=1
+                            lambda x: great_circle(*x.values, r=r), axis=1
                         )
-                        prox_time = (dist < (thresh_dist * 1e3)).sum() * _tstep_h
+                        prox_time = (dist < (thresh_dist * KM2M)).sum() * _tstep_h
                         if (
                             n_match_times * _tstep_h > time_match_thresh
                         ) and prox_time > time_match_thresh:
@@ -929,16 +937,16 @@ class TrackRun:
                         )[ll]
                         new_df1 = new_df1[~new_df1.lon.isnull()]
 
-                        # thr = (time_frac_thresh * 0.5
+                        # thr = (time_frac * 0.5
                         #       * (df2.time.values[-1] - df2.time.values[0]
                         #          + df1.time.values[-1] - df2.time.values[0]))
-                        thr = time_frac_thresh * df2.shape[0]
+                        thr = time_frac * df2.shape[0]
                         dist_diff = np.full(new_df1.shape[0], 9e20)
                         for i, ((x1, y1), (x2, y2)) in enumerate(
                             zip(new_df1[ll].values, df2[ll].values)
                         ):
-                            dist_diff[i] = great_circle(x1, x2, y1, y2)
-                        within_r_idx = dist_diff < (thresh_dist * 1e3)
+                            dist_diff[i] = great_circle(x1, x2, y1, y2, r=r)
+                        within_r_idx = dist_diff < (thresh_dist * KM2M)
                         # if within_r_idx.any():
                         #     if (new_df1[within_r_idx].index[-1]
                         #        - new_df1[within_r_idx].index[0]) > thr:
@@ -959,7 +967,9 @@ class TrackRun:
                 x1, y1, t1 = ct.coord_view
                 for j, (_, other_ct) in enumerate(self._pbar(other_gb, leave=False)):
                     x2, y2, t2 = other_ct.coord_view
-                    dist_matrix[i, j] = distance_metric(x1, y1, t1, x2, y2, t2, beta=float(beta))
+                    dist_matrix[i, j] = distance_metric(
+                        x1, y1, t1, x2, y2, t2, beta=float(beta), r=r
+                    )
             for i, idx1 in enumerate(np.nanargmin(dist_matrix, axis=0)):
                 for j, idx2 in enumerate(np.nanargmin(dist_matrix, axis=1)):
                     if i == idx2 and j == idx1:
@@ -978,11 +988,12 @@ class TrackRun:
         by="point",
         subset=None,
         method="cell",
-        r=222.0,
+        dist=222.0,
         exclude_first={"m": 10, "d": 1},
         exclude_last={"m": 4, "d": 30},
         grid_centres=True,
         weight_by_area=True,
+        r=EARTH_RADIUS,
     ):
         """
         Calculate different types of cyclone density for a given lon-lat grid.
@@ -1005,9 +1016,10 @@ class TrackRun:
             If not given, the calculation is done for all categories.
         method: str, optional
             Method to calculate density (radius|cell)
-        r: float, optional
-            Radius in km
+        dist: float, optional
+            Distance in km
             Used when method='radius'
+            Default: ~2deg on Earth
         exclude_first: dict, optional
             Exclude start date (month, day)
         exclude_last: dict, optional
@@ -1019,6 +1031,10 @@ class TrackRun:
             If false, the density is calculated between grid points.
         weight_by_area: bool, optional
             Weight result by area of grid cells.
+        r: float, optional
+            Radius of the planet in metres
+            Default: EARTH_RADIUS
+
         Returns
         -------
         dens: xarray.DataArray
@@ -1034,11 +1050,12 @@ class TrackRun:
                     by=by,
                     subset=subset_key,
                     method=method,
-                    r=r,
+                    dist=dist,
                     exclude_first=exclude_first,
                     exclude_last=exclude_last,
                     grid_centres=grid_centres,
                     weight_by_area=weight_by_area,
+                    r=r,
                 )
             return result
 
@@ -1074,12 +1091,12 @@ class TrackRun:
         # Select method
         if method == "radius":
             # Convert radius to metres
-            r_metres = r * 1e3
-            units = f"per {round(np.pi * r**2)} km2"
+            dist_metres = dist * KM2M
+            units = f"per {round(np.pi * dist**2)} km2"
             if by == "track":
-                cy_func = partial(track_density_rad, rad=r_metres)
+                cy_func = partial(track_density_rad, dist=dist_metres, r=r)
             else:
-                cy_func = partial(point_density_rad, rad=r_metres)
+                cy_func = partial(point_density_rad, dist=dist_metres, r=r)
         elif method == "cell":
             # TODO: make this check more flexible
             if (np.diff(lon2d[0, :]) < 0).any() or (np.diff(lat2d[:, 0]) < 0).any():
@@ -1110,9 +1127,9 @@ class TrackRun:
 
         if weight_by_area:
             # calculate area in metres
-            area = grid_cell_areas(xlon.values, xlat.values)
+            area = grid_cell_areas(xlon.values, xlat.values, r=r)
             data /= area
-            data *= 1e6  # convert to km^{-2}
+            data *= KM2M * KM2M  # convert to km^{-2}
             units = "km-2"
 
         dens = xr.DataArray(
