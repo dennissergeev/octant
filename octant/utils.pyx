@@ -254,7 +254,7 @@ cdef double _masking_loop_func(double[:, ::1] mask,
     Masking function. See mask_tracks() for explanation.
     """
     cdef int i, j
-    cdef int jmax = lat2d.shape[0]
+    cdef int jmax = lon2d.shape[0]
     cdef int imax = lon2d.shape[1]
 
     for j in range(jmax):
@@ -306,7 +306,7 @@ cpdef double mask_tracks(double[:, ::1] mask,
         points_near_coast += _masking_loop_func(mask, lon2d, lat2d,
                                                 lonlat[p, 0], lonlat[p, 1],
                                                 dist, r_planet=r_planet)
-    return points_near_coast / pmax
+    return points_near_coast / <double>pmax
 
 
 cdef double _traj_variance(double[:] x1,

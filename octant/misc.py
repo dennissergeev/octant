@@ -179,7 +179,7 @@ def check_by_mask(
     assert isinstance(lsm, xr.DataArray), "lsm variable should be an `xarray.DataArray`"
     lon2d, lat2d = np.meshgrid(lsm.longitude, lsm.latitude)
     l_mask = lsm.values
-    inner_idx = True
+    inner_idx = np.ones(l_mask.shape, dtype=bool)
     if check_domain_bounds:
         if getattr(trackrun.conf, "lon1", None):
             inner_idx &= lon2d >= trackrun.conf.lon1
@@ -195,7 +195,7 @@ def check_by_mask(
     lat2d_c = lat2d.astype("double", order="C")
     flag = (
         mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, dist * KM2M, r_planet=r_planet)
-        < time_frac
+        <= time_frac
     )
     return flag
 
