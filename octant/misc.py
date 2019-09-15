@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Miscellanea."""
-from collections.abc import Iterable
 import operator
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -340,7 +340,6 @@ def add_domain_bounds_to_mask(mask, lonlat_box):
 
     Examples
     --------
-
     >>> from octant.core import TrackRun
     >>> import xarray as xr
     >>> land_mask = xr.open_dataarray("path/to/land/mask/file")
