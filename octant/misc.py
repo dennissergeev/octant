@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Miscellanea."""
 from collections.abc import Iterable
+import operator
 
 import numpy as np
 
@@ -9,7 +10,7 @@ import xarray as xr
 from .decor import get_pbar
 from .exceptions import ArgumentError
 from .params import EARTH_RADIUS, KM2M
-from .utils import great_circle, mask_tracks
+from .utils import great_circle, mask_tracks, mean_arr_along_track
 
 DENSITY_TYPES = ["point", "track", "genesis", "lysis"]
 
@@ -178,18 +179,11 @@ def check_by_mask(
     """
     assert isinstance(lsm, xr.DataArray), "lsm variable should be an `xarray.DataArray`"
     lon2d, lat2d = np.meshgrid(lsm.longitude, lsm.latitude)
-    l_mask = lsm.values
-    inner_idx = np.ones(l_mask.shape, dtype=bool)
     if check_domain_bounds:
-        if getattr(trackrun.conf, "lon1", None):
-            inner_idx &= lon2d >= trackrun.conf.lon1
-        if getattr(trackrun.conf, "lon2", None):
-            inner_idx &= lon2d <= trackrun.conf.lon2
-        if getattr(trackrun.conf, "lat1", None):
-            inner_idx &= lat2d >= trackrun.conf.lat1
-        if getattr(trackrun.conf, "lat2", None):
-            inner_idx &= lat2d <= trackrun.conf.lat2
-    mask_c = (((~inner_idx) | (l_mask >= lmask_thresh)) * 1.0).astype("double", order="C")
+        l_mask = add_domain_bounds_to_mask(lsm, trackrun.conf.extent)
+    else:
+        l_mask = lsm
+    mask_c = ((l_mask.values >= lmask_thresh) * 1.0).astype("double", order="C")
     lon2d_c = lon2d.astype("double", order="C")
     lat2d_c = lat2d.astype("double", order="C")
     flag = (
@@ -263,3 +257,115 @@ def check_far_from_boundaries(ot, lonlat_box, dist, r_planet=EARTH_RADIUS):
         result &= (ot.apply(_func, axis=1) > dist * KM2M).all()
 
     return result
+
+
+def check_by_arr_thresh(ot, trackrun, arr, arr_thresh, oper, dist, r_planet=EARTH_RADIUS):
+    """
+    Check if the mean value of `arr` along the track satisfies the threshold.
+
+    This function can be passed to `octant.core.TrackRun.classify()` to filter
+    through cyclone tracks.
+
+    Parameters
+    ----------
+    ot: octant.core.OctantTrack
+        Cyclone track to check
+    trackrun: octant.core.TrackRun
+        (parent) track run instance to get lon/lat boundaries if present
+    arr: xarray.DataArray
+        Two-dimensional array
+    arr_thresh: float
+        Threshold used for `arr` values
+    oper: str
+        Math operator the mean array value to the threshold
+        Can be one of (lt|le|gt|ge)
+    dist: float
+        distance in km, passed to mask_tracks() function
+    r_planet: float, optional
+        Radius of the planet in metres
+        Default: EARTH_RADIUS
+
+    Returns
+    -------
+    flag: bool
+        True if the track satisfies conditions above.
+
+    Examples
+    --------
+    Check that ocean fraction is greater than 75% within 111 km radius
+
+    >>> from octant.core import TrackRun
+    >>> import xarray as xr
+    >>> land_mask = xr.open_dataarray("path/to/land/mask/file")
+    >>> tr = TrackRun("path/to/directory/with/tracks/")
+    >>> random_track = tr.data.loc[123]
+    >>> check_by_arr_thresh(random_track, land_mask, 0.25, "le", 111.0)
+    True
+
+    See Also
+    --------
+    octant.core.TrackRun.classify, octant.utils.mean_arr_along_track,
+    octant.misc.check_by_mask, octant.misc.check_far_from_boundaries
+    """
+    allowed_ops = ["lt", "le", "gt", "ge"]
+    if oper not in allowed_ops:
+        raise ArgumentError(f"oper={oper} should be one of {allowed_ops}")
+    op = getattr(operator, oper)
+    assert isinstance(arr, xr.DataArray), "arr should be an `xarray.DataArray`"
+    lon2d, lat2d = np.meshgrid(arr.longitude, arr.latitude)
+    arr_c = arr.values.astype("double", order="C")
+    lon2d_c = lon2d.astype("double", order="C")
+    lat2d_c = lat2d.astype("double", order="C")
+    flag = op(
+        mean_arr_along_track(arr_c, lon2d_c, lat2d_c, ot.lonlat_c, dist * KM2M, r_planet=r_planet),
+        arr_thresh,
+    )
+    return flag
+
+
+def add_domain_bounds_to_mask(mask, lonlat_box):
+    """
+    Add a frame representing domain boundaries to a mask.
+
+    Parameters
+    ----------
+    mask: xarray.DataArray
+        Two-dimensional mask
+    lonlat_box: list
+        Boundaries of longitude-latitude rectangle (lon_min, lon_max, lat_min, lat_max)
+        Note that the order matters!
+
+    Returns
+    -------
+    new_mask: xarray.DataArray
+        New mask including the old mask and domain boundaries
+
+    Examples
+    --------
+
+    >>> from octant.core import TrackRun
+    >>> import xarray as xr
+    >>> land_mask = xr.open_dataarray("path/to/land/mask/file")
+    >>> tr = TrackRun("path/to/directory/with/tracks/")
+    >>> new_mask = add_domain_bounds_to_mask(land_mask, lonlat_box=tr.conf.extent)
+
+    See Also
+    --------
+    octant.utils.mask_tracks, octant.misc.check_far_from_boundaries
+    """
+    assert isinstance(mask, xr.DataArray), "mask variable should be an `xarray.DataArray`"
+    lon2d, lat2d = np.meshgrid(mask.longitude, mask.latitude)
+
+    lon1, lon2, lat1, lat2 = lonlat_box
+
+    inner_idx = np.ones(mask.shape, dtype=bool)
+    if lon1 is not None:
+        inner_idx &= lon2d >= lon1
+    if lon2 is not None:
+        inner_idx &= lon2d <= lon2
+    if lat1 is not None:
+        inner_idx &= lat2d >= lat1
+    if lat2 is not None:
+        inner_idx &= lat2d <= lat2
+    new_mask = mask.where(inner_idx, 1.0)
+    return new_mask

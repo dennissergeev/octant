@@ -309,6 +309,76 @@ cpdef double mask_tracks(double[:, ::1] mask,
     return points_near_coast / <double>pmax
 
 
+cdef double _arr_around_point(double[:, ::1] mask,
+                              double[:, ::1] lon2d,
+                              double[:, ::1] lat2d,
+                              double lon,
+                              double lat,
+                              double dist,
+                              double r_planet=EARTH_RADIUS):
+    cdef int i, j
+    cdef int counter
+    cdef int jmax = lon2d.shape[0]
+    cdef int imax = lon2d.shape[1]
+    cdef double area_sum
+
+    counter = 0
+    area_sum = 0.
+    for j in range(jmax):
+        for i in range(imax):
+            if _great_circle(lon, lon2d[j, i],
+                             lat, lat2d[j, i], r_planet=r_planet) <= dist:
+                counter += 1
+                area_sum += mask[j, i]
+    print(counter)
+    if counter == 0:
+        return 0.
+    else:
+        return area_sum / <double>counter
+
+
+cpdef double mean_arr_along_track(double[:, ::1] arr,
+                                  double[:, ::1] lon2d,
+                                  double[:, ::1] lat2d,
+                                  double[:, ::1] lonlat,
+                                  double dist,
+                                  double r_planet=EARTH_RADIUS):
+    """
+    Calculate the mean of an array along the cyclone track within distance `dist` of each point.
+
+    Parameters
+    ----------
+    arr: double, shape(M, N)
+        Two-dimensional array of values (e.g. land-sea mask)
+    lon2d: double, shape(M, N)
+        Array of longitudes corresponding to `arr`
+    lat2d: double, shape(M, N)
+        Array of latitudes corresponding to `arr`
+    lonlat: double, shape(P, 2)
+        Array of track's longitudes and latitudes
+    dist: double
+        Distance in metres defining the radius for averaging
+    r_planet: double, optional
+        Radius of the planet in metres
+        Default: EARTH_RADIUS
+
+    Returns
+    -------
+    Mean value of the array for the whole track.
+    """
+    cdef int p
+    cdef int pmax = lonlat.shape[0]
+    cdef double area_sum_total
+
+    area_sum_total = 0.
+    for p in range(pmax):
+        area_sum_total += _arr_around_point(arr, lon2d, lat2d,
+                                            lonlat[p, 0], lonlat[p, 1],
+                                            dist, r_planet=r_planet)
+    return area_sum_total / <double>pmax
+
+
+# Distance metrics 
 cdef double _traj_variance(double[:] x1,
                            double[:] y1,
                            double[:] t1,
