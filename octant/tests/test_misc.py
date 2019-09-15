@@ -19,6 +19,6 @@ def trackrun():
 def test_check_far_from_boundaries(trackrun):
     """Test check_far_from_boundaries() on a cached TrackRun."""
     a_track = trackrun.data.loc[9]
-    assert misc.check_far_from_boundaries(a_track, [-20, 30, 65, 80])
-    assert not misc.check_far_from_boundaries(a_track, [-10, 30, 73, 80])
-    assert not misc.check_far_from_boundaries(a_track, [-20, 30, 70, 80], dist=1e6)
+    assert misc.check_far_from_boundaries(a_track, [-20, 30, 65, 80], dist=200)
+    assert not misc.check_far_from_boundaries(a_track, [-10, 30, 73, 80], dist=200)
+    assert not misc.check_far_from_boundaries(a_track, [-20, 30, 70, 80], dist=1e3)

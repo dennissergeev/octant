@@ -8,6 +8,7 @@ import xarray as xr
 
 from .decor import get_pbar
 from .exceptions import ArgumentError
+from .params import EARTH_RADIUS, KM2M
 from .utils import great_circle, mask_tracks
 
 DENSITY_TYPES = ["point", "track", "genesis", "lysis"]
@@ -148,8 +149,8 @@ def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, rad=50.0, mask_thresh=0.5):
     --------
     >>> from octant.core import TrackRun
     >>> import xarray as xr
-    >>> land_mask = xr.open_dataarray(path_to_land_mask_file)
-    >>> tr = TrackRun(path_to_directory_with_tracks)
+    >>> land_mask = xr.open_dataarray("path/to/land/mask/file")
+    >>> tr = TrackRun("path/to/directory/with/tracks/")
     >>> random_track = tr.data.loc[123]
     >>> check_by_mask(random_track, tr, land_mask, lmask_thresh=0.5)
     True
@@ -176,11 +177,11 @@ def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, rad=50.0, mask_thresh=0.5):
     themask_c = trackrun.themask.astype("double", order="C")
     lon2d_c = lon2d.astype("double", order="C")
     lat2d_c = lat2d.astype("double", order="C")
-    flag = mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, rad * 1e3) < mask_thresh
+    flag = mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, rad * KM2M) < mask_thresh
     return flag
 
 
-def check_far_from_boundaries(ot, lonlat_box, dist=200e3):
+def check_far_from_boundaries(ot, lonlat_box, dist, r=EARTH_RADIUS):
     """
     Check if track is not too close to boundaries.
 
@@ -192,7 +193,10 @@ def check_far_from_boundaries(ot, lonlat_box, dist=200e3):
         Boundaries of longitude-latitude rectangle (lon_min, lon_max, lat_min, lat_max)
         Note that the order matters!
     dist: float
-        Minimum distance from a boundary in metres
+        Minimum distance from a boundary in kilometres
+    r: float, optional
+        Radius of the planet in metres
+        Default: EARTH_RADIUS
 
     Returns
     -------
@@ -202,14 +206,14 @@ def check_far_from_boundaries(ot, lonlat_box, dist=200e3):
     Examples
     --------
     >>> from octant.core import TrackRun
-    >>> tr = TrackRun("path/to/directory/with/tracks")
+    >>> tr = TrackRun("path/to/directory/with/tracks/")
     >>> random_track = tr.data.loc[123]
-    >>> check_far_from_boundaries(random_track, lonlat_box=[-10, 20, 60, 80], dist=250e3)
+    >>> check_far_from_boundaries(random_track, lonlat_box=[-10, 20, 60, 80], dist=250)
     True
 
     >>> from functools import partial
     >>> conds = [
-            ('bound', [partial(check_far_from_boundaries, lonlat_box=tr.conf.extent)])
+            ('bound', [partial(check_far_from_boundaries, lonlat_box=tr.conf.extent, dist=100)])
         ]  # construct a condition for tracks to be within the boundaries taken from the TrackRun
     >>> tr.classify(conds)
     >>> tr.cat_labels
@@ -217,7 +221,7 @@ def check_far_from_boundaries(ot, lonlat_box, dist=200e3):
 
     See Also
     --------
-    octant.core.TrackRun.classify, octant.utils.check_by_mask
+    octant.core.OctantTrack.within_rectangle, octant.utils.check_by_mask
     """
     # Preliminary check: track is within the rectangle
     # (Could be the case for a small rectangle.)
@@ -238,6 +242,6 @@ def check_far_from_boundaries(ot, lonlat_box, dist=200e3):
             args[2 * (i // 2)] = ll
             return great_circle(*args)
 
-        result &= (ot.apply(_func, axis=1) > dist).all()
+        result &= (ot.apply(_func, axis=1) > dist * KM2M).all()
 
     return result

@@ -145,7 +145,7 @@ class OctantTrack(pd.DataFrame):
         """Maximum vorticity of the cyclone track."""
         return np.nanmax(self.vo.values)
 
-    def within_rectangle(self, lon0, lon1, lat0, lat1, thresh=1):
+    def within_rectangle(self, lon0, lon1, lat0, lat1, time_frac=1):
         """
         Check that OctantTrack is within a rectangle for a fraction of its lifetime.
 
@@ -153,8 +153,8 @@ class OctantTrack(pd.DataFrame):
         ----------
         lon0, lon1, lat0, lat1: float
             Boundaries of longitude-latitude rectangle (lon_min, lon_max, lat_min, lat_max)
-        thresh: float, optional
-            Time threshold. By default, set to maximum, i.e. rack should be within the box entirely.
+        time_frac: float, optional
+            Time fraction threshold. By default, set to maximum, i.e. track should be within the box entirely.
 
         Returns
         -------
@@ -164,9 +164,13 @@ class OctantTrack(pd.DataFrame):
         --------
         Test that cyclone spends no more than a third of its life time outside the box
 
-        >>> box = [-10, 25, 68, 78]
-        >>> ot.within_rectangle(*bbox, thresh=0.67)
+        >>> bbox = [-10, 25, 68, 78]
+        >>> ot.within_rectangle(*bbox, time_frac=0.67)
         True
+
+        See Also
+        --------
+        octant.misc.check_far_from_boundaries
         """
         time_within = self[
             (self.lon >= lon0) & (self.lon <= lon1) & (self.lat >= lat0) & (self.lat <= lat1)
@@ -177,7 +181,7 @@ class OctantTrack(pd.DataFrame):
         """
         Plot cyclone track using as plot function from plotting submodule.
 
-        Closed circle shows the beginning, open circle - the end of the track.
+        Filled circle shows the beginning, empty circle - the end of the track.
 
         Parameters
         ----------
