@@ -119,15 +119,22 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by="M"):
 
 
 def check_by_mask(
-    ot, trackrun, lsm, lmask_thresh=1, dist=50.0, time_frac=0.5, r_planet=EARTH_RADIUS
+    ot,
+    trackrun,
+    lsm,
+    lmask_thresh=1,
+    dist=50.0,
+    time_frac=0.5,
+    check_domain_bounds=True,
+    r_planet=EARTH_RADIUS,
 ):
     """
     Check how close the OctantTrack is to masked points.
 
     Check if the given track spends less than `time_frac` of its lifetime
-    within `dist` away from the land or domain boundaries.
+    within `dist` away from the land or domain boundaries (if check_domain_bounds is True).
 
-    This function can be passed to `octant.core.TrackRun.categorise()` to filter
+    This function can be passed to `octant.core.TrackRun.classify()` to filter
     through cyclone tracks.
 
     Parameters
@@ -144,6 +151,8 @@ def check_by_mask(
         distance in km, passed to mask_tracks() function
     time_frac: float, optional
         Threshold for track's lifetime (0-1)
+    check_domain_bounds: bool, optional
+        If true, include domain boundary (taken from TrackRun.conf if available) in the mask
     r_planet: float, optional
         Radius of the planet in metres
         Default: EARTH_RADIUS
@@ -151,7 +160,7 @@ def check_by_mask(
     Returns
     -------
     flag: bool
-        The track is far away from the boundaries and the land mask.
+        The track is far away the land mask or from the boundaries.
 
     Examples
     --------
@@ -165,23 +174,22 @@ def check_by_mask(
 
     See Also
     --------
-    octant.core.TrackRun.classify, octant.utils.mask_tracks
+    octant.core.TrackRun.classify, octant.utils.mask_tracks, octant.misc.check_far_from_boundaries
     """
     assert isinstance(lsm, xr.DataArray), "lsm variable should be an `xarray.DataArray`"
     lon2d, lat2d = np.meshgrid(lsm.longitude, lsm.latitude)
     l_mask = lsm.values
     inner_idx = True
-    if getattr(trackrun.conf, "lon1", None):
-        inner_idx &= lon2d >= trackrun.conf.lon1
-    if getattr(trackrun.conf, "lon2", None):
-        inner_idx &= lon2d <= trackrun.conf.lon2
-    if getattr(trackrun.conf, "lat1", None):
-        inner_idx &= lat2d >= trackrun.conf.lat1
-    if getattr(trackrun.conf, "lat2", None):
-        inner_idx &= lat2d <= trackrun.conf.lat2
-    boundary_mask = np.zeros_like(lon2d)
-    boundary_mask[~inner_idx] = 1.0
-    trackrun.themask = ((boundary_mask == 1.0) | (l_mask >= lmask_thresh)) * 1.0
+    if check_domain_bounds:
+        if getattr(trackrun.conf, "lon1", None):
+            inner_idx &= lon2d >= trackrun.conf.lon1
+        if getattr(trackrun.conf, "lon2", None):
+            inner_idx &= lon2d <= trackrun.conf.lon2
+        if getattr(trackrun.conf, "lat1", None):
+            inner_idx &= lat2d >= trackrun.conf.lat1
+        if getattr(trackrun.conf, "lat2", None):
+            inner_idx &= lat2d <= trackrun.conf.lat2
+    trackrun.themask = ((~inner_idx) | (l_mask >= lmask_thresh)) * 1.0
     themask_c = trackrun.themask.astype("double", order="C")
     lon2d_c = lon2d.astype("double", order="C")
     lat2d_c = lat2d.astype("double", order="C")
@@ -251,7 +259,7 @@ def check_far_from_boundaries(ot, lonlat_box, dist, r_planet=EARTH_RADIUS):
         def _func(row):
             args = [row.lon, row.lon, row.lat, row.lat].copy()
             args[2 * (i // 2)] = ll
-            return great_circle(*args)
+            return great_circle(*args, r_planet=r_planet)
 
         result &= (ot.apply(_func, axis=1) > dist * KM2M).all()
 
