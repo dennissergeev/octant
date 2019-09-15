@@ -259,7 +259,7 @@ def check_far_from_boundaries(ot, lonlat_box, dist, r_planet=EARTH_RADIUS):
     return result
 
 
-def check_by_arr_thresh(ot, trackrun, arr, arr_thresh, oper, dist, r_planet=EARTH_RADIUS):
+def check_by_arr_thresh(ot, arr, arr_thresh, oper, dist, r_planet=EARTH_RADIUS):
     """
     Check if the mean value of `arr` along the track satisfies the threshold.
 
@@ -270,8 +270,6 @@ def check_by_arr_thresh(ot, trackrun, arr, arr_thresh, oper, dist, r_planet=EART
     ----------
     ot: octant.core.OctantTrack
         Cyclone track to check
-    trackrun: octant.core.TrackRun
-        (parent) track run instance to get lon/lat boundaries if present
     arr: xarray.DataArray
         Two-dimensional array
     arr_thresh: float
