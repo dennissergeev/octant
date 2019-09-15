@@ -189,12 +189,11 @@ def check_by_mask(
             inner_idx &= lat2d >= trackrun.conf.lat1
         if getattr(trackrun.conf, "lat2", None):
             inner_idx &= lat2d <= trackrun.conf.lat2
-    trackrun.themask = ((~inner_idx) | (l_mask >= lmask_thresh)) * 1.0
-    themask_c = trackrun.themask.astype("double", order="C")
+    mask_c = (((~inner_idx) | (l_mask >= lmask_thresh)) * 1.0).astype("double", order="C")
     lon2d_c = lon2d.astype("double", order="C")
     lat2d_c = lat2d.astype("double", order="C")
     flag = (
-        mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, dist * KM2M, r_planet=r_planet)
+        mask_tracks(mask_c, lon2d_c, lat2d_c, ot.lonlat_c, dist * KM2M, r_planet=r_planet)
         <= time_frac
     )
     return flag
