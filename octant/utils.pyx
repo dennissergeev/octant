@@ -98,6 +98,7 @@ cpdef double total_dist(double[:, ::1] lonlat):
     return dist
 
 
+# Density functions
 cpdef double[:, ::1] point_density_cell(double[:, ::1] lon2d,
                                         double[:, ::1] lat2d,
                                         double[:, ::1] lonlat):
@@ -243,6 +244,7 @@ cpdef double[:, ::1] track_density_rad(double[:, ::1] lon2d,
     return count
 
 
+# Masking functions
 cdef double _masking_loop_func(double[:, ::1] mask,
                                double[:, ::1] lon2d,
                                double[:, ::1] lat2d,
@@ -336,12 +338,12 @@ cdef double _arr_around_point(double[:, ::1] mask,
         return area_sum / <double>counter
 
 
-cpdef double mean_arr_along_track(double[:, ::1] arr,
-                                  double[:, ::1] lon2d,
-                                  double[:, ::1] lat2d,
-                                  double[:, ::1] lonlat,
-                                  double dist,
-                                  double r_planet=EARTH_RADIUS):
+cpdef double[:] mean_arr_along_track(double[:, ::1] arr,
+                                     double[:, ::1] lon2d,
+                                     double[:, ::1] lat2d,
+                                     double[:, ::1] lonlat,
+                                     double dist,
+                                     double r_planet=EARTH_RADIUS):
     """
     Calculate the mean of an array along the cyclone track within distance `dist` of each point.
 
@@ -363,21 +365,21 @@ cpdef double mean_arr_along_track(double[:, ::1] arr,
 
     Returns
     -------
-    Mean value of the array for the whole track.
+    Mean value of the array for each point along the track.
     """
     cdef int p
     cdef int pmax = lonlat.shape[0]
-    cdef double area_sum_total
+    z = np.zeros([pmax], dtype=np.double)
+    cdef double[:] area_mean = z
 
-    area_sum_total = 0.
     for p in range(pmax):
-        area_sum_total += _arr_around_point(arr, lon2d, lat2d,
-                                            lonlat[p, 0], lonlat[p, 1],
-                                            dist, r_planet=r_planet)
-    return area_sum_total / <double>pmax
+        area_mean[p] = _arr_around_point(arr, lon2d, lat2d,
+                                         lonlat[p, 0], lonlat[p, 1],
+                                         dist, r_planet=r_planet)
+    return area_mean
 
 
-# Distance metrics 
+# Distance metrics
 cdef double _traj_variance(double[:] x1,
                            double[:] y1,
                            double[:] t1,

@@ -259,7 +259,7 @@ def check_far_from_boundaries(ot, lonlat_box, dist, r_planet=EARTH_RADIUS):
     return result
 
 
-def check_by_arr_thresh(ot, arr, arr_thresh, oper, dist, r_planet=EARTH_RADIUS):
+def check_by_arr_thresh(ot, arr, arr_thresh, oper, dist, reduce="mean", r_planet=EARTH_RADIUS):
     """
     Check if the mean value of `arr` along the track satisfies the threshold.
 
@@ -278,7 +278,9 @@ def check_by_arr_thresh(ot, arr, arr_thresh, oper, dist, r_planet=EARTH_RADIUS):
         Math operator the mean array value to the threshold
         Can be one of (lt|le|gt|ge)
     dist: float
-        distance in km, passed to mask_tracks() function
+        Distance in km, passed to mask_tracks() function
+    reduce: str, optional
+        How to select values along the track (mean|any)
     r_planet: float, optional
         Radius of the planet in metres
         Default: EARTH_RADIUS
@@ -307,17 +309,26 @@ def check_by_arr_thresh(ot, arr, arr_thresh, oper, dist, r_planet=EARTH_RADIUS):
     """
     allowed_ops = ["lt", "le", "gt", "ge"]
     if oper not in allowed_ops:
+        # TODO: create chk_var() function
         raise ArgumentError(f"oper={oper} should be one of {allowed_ops}")
+    allowed_ops = ["mean", "all", "any"]
+    if reduce not in allowed_ops:
+        raise ArgumentError(f"reduce={reduce} should be one of {allowed_ops}")
     op = getattr(operator, oper)
     assert isinstance(arr, xr.DataArray), "arr should be an `xarray.DataArray`"
     lon2d, lat2d = np.meshgrid(arr.longitude, arr.latitude)
     arr_c = arr.values.astype("double", order="C")
     lon2d_c = lon2d.astype("double", order="C")
     lat2d_c = lat2d.astype("double", order="C")
-    flag = op(
-        mean_arr_along_track(arr_c, lon2d_c, lat2d_c, ot.lonlat_c, dist * KM2M, r_planet=r_planet),
-        arr_thresh,
-    )
+    mean_vals = mean_arr_along_track(
+        arr_c, lon2d_c, lat2d_c, ot.lonlat_c, dist * KM2M, r_planet=r_planet
+    ).base
+    if reduce == "mean":
+        flag = op(mean_vals.mean(), arr_thresh)
+    elif reduce == "all":
+        flag = op(mean_vals, arr_thresh).all()
+    elif reduce == "any":
+        flag = op(mean_vals, arr_thresh).any()
     return flag
 
 
