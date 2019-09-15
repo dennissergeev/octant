@@ -330,7 +330,6 @@ cdef double _arr_around_point(double[:, ::1] mask,
                              lat, lat2d[j, i], r_planet=r_planet) <= dist:
                 counter += 1
                 area_sum += mask[j, i]
-    print(counter)
     if counter == 0:
         return 0.
     else:
