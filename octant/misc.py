@@ -118,7 +118,9 @@ def bin_count_tracks(tr_obj, start_year, n_winters, by="M"):
     return counter
 
 
-def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, dist=50.0, time_frac=0.5, r=EARTH_RADIUS):
+def check_by_mask(
+    ot, trackrun, lsm, lmask_thresh=1, dist=50.0, time_frac=0.5, r_planet=EARTH_RADIUS
+):
     """
     Check how close the OctantTrack is to masked points.
 
@@ -142,7 +144,7 @@ def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, dist=50.0, time_frac=0.5, r
         distance in km, passed to mask_tracks() function
     time_frac: float, optional
         Threshold for track's lifetime (0-1)
-    r: float, optional
+    r_planet: float, optional
         Radius of the planet in metres
         Default: EARTH_RADIUS
 
@@ -183,11 +185,14 @@ def check_by_mask(ot, trackrun, lsm, lmask_thresh=1, dist=50.0, time_frac=0.5, r
     themask_c = trackrun.themask.astype("double", order="C")
     lon2d_c = lon2d.astype("double", order="C")
     lat2d_c = lat2d.astype("double", order="C")
-    flag = mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, dist * KM2M, r=r) < time_frac
+    flag = (
+        mask_tracks(themask_c, lon2d_c, lat2d_c, ot.lonlat_c, dist * KM2M, r_planet=r_planet)
+        < time_frac
+    )
     return flag
 
 
-def check_far_from_boundaries(ot, lonlat_box, dist, r=EARTH_RADIUS):
+def check_far_from_boundaries(ot, lonlat_box, dist, r_planet=EARTH_RADIUS):
     """
     Check if track is not too close to boundaries.
 
@@ -200,7 +205,7 @@ def check_far_from_boundaries(ot, lonlat_box, dist, r=EARTH_RADIUS):
         Note that the order matters!
     dist: float
         Minimum distance from a boundary in kilometres
-    r: float, optional
+    r_planet: float, optional
         Radius of the planet in metres
         Default: EARTH_RADIUS
 

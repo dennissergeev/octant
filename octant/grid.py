@@ -101,7 +101,7 @@ def _quadrant_area(radian_lat_bounds, radian_lon_bounds, r_planet):
 
     Area weights are calculated for each lat/lon cell as:
         .. math::
-            r^2 (lon_1 - lon_0) ( sin(lat_1) - sin(lat_0))
+            r_{planet}^2 (lon_1 - lon_0) ( sin(lat_1) - sin(lat_0))
 
     The resulting array will have a shape of
     *(radian_lat_bounds.shape[0], radian_lon_bounds.shape[0])*
@@ -139,9 +139,9 @@ def _quadrant_area(radian_lat_bounds, radian_lon_bounds, r_planet):
     return np.abs(areas)
 
 
-def grid_cell_areas(lon1d, lat1d, r=EARTH_RADIUS):
+def grid_cell_areas(lon1d, lat1d, r_planet=EARTH_RADIUS):
     """Simplified iris function to calculate grid cell areas."""
     lon_bounds_radian = np.deg2rad(_iris_guess_bounds(lon1d))
     lat_bounds_radian = np.deg2rad(_iris_guess_bounds(lat1d))
-    area = _quadrant_area(lat_bounds_radian, lon_bounds_radian, r)
+    area = _quadrant_area(lat_bounds_radian, lon_bounds_radian, r_planet)
     return area

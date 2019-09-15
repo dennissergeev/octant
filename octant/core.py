@@ -812,7 +812,7 @@ class TrackRun:
         time_frac=0.5,
         return_dist_matrix=False,
         beta=100.0,
-        r=EARTH_RADIUS,
+        r_planet=EARTH_RADIUS,
     ):
         """
         Match tracked vortices to a list of vortices from another data source.
@@ -840,7 +840,7 @@ class TrackRun:
         beta: float, optional
             Parameter used in 'bs2000' method
             E.g. beta=100 corresponds to 10 m/s average steering wind
-        r: float, optional
+        r_planet: float, optional
             Radius of the planet in metres
             Default: EARTH_RADIUS
 
@@ -865,7 +865,7 @@ class TrackRun:
                     time_frac=time_frac,
                     return_dist_matrix=return_dist_matrix,
                     beta=beta,
-                    r=r,
+                    r_planet=r_planet,
                 )
             return result
 
@@ -897,7 +897,7 @@ class TrackRun:
                     if n_match_times > 0:
                         _tstep_h = intersect.time.diff().values[-1] / HOUR
                         dist = intersect[["lon_x", "lon_y", "lat_x", "lat_y"]].apply(
-                            lambda x: great_circle(*x.values, r=r), axis=1
+                            lambda x: great_circle(*x.values, r_planet=r_planet), axis=1
                         )
                         prox_time = (dist < (thresh_dist * KM2M)).sum() * _tstep_h
                         if (
@@ -945,7 +945,7 @@ class TrackRun:
                         for i, ((x1, y1), (x2, y2)) in enumerate(
                             zip(new_df1[ll].values, df2[ll].values)
                         ):
-                            dist_diff[i] = great_circle(x1, x2, y1, y2, r=r)
+                            dist_diff[i] = great_circle(x1, x2, y1, y2, r_planet=r_planet)
                         within_r_idx = dist_diff < (thresh_dist * KM2M)
                         # if within_r_idx.any():
                         #     if (new_df1[within_r_idx].index[-1]
@@ -968,7 +968,7 @@ class TrackRun:
                 for j, (_, other_ct) in enumerate(self._pbar(other_gb, leave=False)):
                     x2, y2, t2 = other_ct.coord_view
                     dist_matrix[i, j] = distance_metric(
-                        x1, y1, t1, x2, y2, t2, beta=float(beta), r=r
+                        x1, y1, t1, x2, y2, t2, beta=float(beta), r_planet=r_planet
                     )
             for i, idx1 in enumerate(np.nanargmin(dist_matrix, axis=0)):
                 for j, idx2 in enumerate(np.nanargmin(dist_matrix, axis=1)):
@@ -993,7 +993,7 @@ class TrackRun:
         exclude_last={"m": 4, "d": 30},
         grid_centres=True,
         weight_by_area=True,
-        r=EARTH_RADIUS,
+        r_planet=EARTH_RADIUS,
     ):
         """
         Calculate different types of cyclone density for a given lon-lat grid.
@@ -1031,7 +1031,7 @@ class TrackRun:
             If false, the density is calculated between grid points.
         weight_by_area: bool, optional
             Weight result by area of grid cells.
-        r: float, optional
+        r_planet: float, optional
             Radius of the planet in metres
             Default: EARTH_RADIUS
 
@@ -1055,7 +1055,7 @@ class TrackRun:
                     exclude_last=exclude_last,
                     grid_centres=grid_centres,
                     weight_by_area=weight_by_area,
-                    r=r,
+                    r_planet=r_planet,
                 )
             return result
 
@@ -1094,9 +1094,9 @@ class TrackRun:
             dist_metres = dist * KM2M
             units = f"per {round(np.pi * dist**2)} km2"
             if by == "track":
-                cy_func = partial(track_density_rad, dist=dist_metres, r=r)
+                cy_func = partial(track_density_rad, dist=dist_metres, r_planet=r_planet)
             else:
-                cy_func = partial(point_density_rad, dist=dist_metres, r=r)
+                cy_func = partial(point_density_rad, dist=dist_metres, r_planet=r_planet)
         elif method == "cell":
             # TODO: make this check more flexible
             if (np.diff(lon2d[0, :]) < 0).any() or (np.diff(lat2d[:, 0]) < 0).any():
@@ -1127,7 +1127,7 @@ class TrackRun:
 
         if weight_by_area:
             # calculate area in metres
-            area = grid_cell_areas(xlon.values, xlat.values, r=r)
+            area = grid_cell_areas(xlon.values, xlat.values, r_planet=r_planet)
             data /= area
             data *= KM2M * KM2M  # convert to km^{-2}
             units = "km-2"
