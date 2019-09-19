@@ -139,7 +139,10 @@ class OctantTrack(pd.DataFrame):
     @property
     def average_speed(self):
         """Average cyclone propagation speed in km per hour."""
-        return self.total_dist_km / self.lifetime_h
+        if self.lifetime_h == 0:
+            return np.nan
+        else:
+            return self.total_dist_km / self.lifetime_h
 
     @property
     def max_vort(self):
@@ -174,10 +177,13 @@ class OctantTrack(pd.DataFrame):
         --------
         octant.misc.check_far_from_boundaries
         """
-        time_within = self[
+        _within = self[
             (self.lon >= lon0) & (self.lon <= lon1) & (self.lat >= lat0) & (self.lat <= lat1)
-        ].lifetime_h
-        return time_within / self.lifetime_h >= time_frac
+        ]
+        if self.lifetime_h == 0:
+            return _within.shape[0] == 1
+        else:
+            return _within.lifetime_h / self.lifetime_h >= time_frac
 
     def plot_track(self, ax=None, **kwargs):
         """

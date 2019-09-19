@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Plotting functions for octant package."""
 import cartopy.crs as ccrs
-from cartopy.mpl.geoaxes import GeoAxesSubplot
+from cartopy.mpl.geoaxes import GeoAxes, GeoAxesSubplot
 from cartopy.mpl.gridliner import LATITUDE_FORMATTER, LONGITUDE_FORMATTER
 
 import matplotlib.pyplot as plt
@@ -51,7 +51,7 @@ def plot(df, ax=None, transform=DFLT_TRANSFORM, add_markers=True, **kwargs):
         gl.xformatter = LONGITUDE_FORMATTER
         gl.yformatter = LATITUDE_FORMATTER
         ax.coastlines()
-    if isinstance(ax, GeoAxesSubplot):
+    if isinstance(ax, (GeoAxesSubplot, GeoAxes)):
         mapkw = {"transform": transform}
     else:
         mapkw = {}
