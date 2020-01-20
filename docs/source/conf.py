@@ -25,7 +25,7 @@ import octant
 # -- Project information -----------------------------------------------------
 
 project = "octant"
-copyright = "2018, the octant developers"
+copyright = "2020, the octant developers"
 author = "The octant developers"
 
 # The short X.Y version
