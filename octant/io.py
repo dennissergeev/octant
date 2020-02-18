@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from .core import OctantTrack
 from .decor import get_pbar
 from .exceptions import LoadError
 from .params import MUX_NAMES, SCALE_VO
+from .parts import OctantTrack
 
 ARCH_KEY = "trackrun"
 ARCH_KEY_CAT = ARCH_KEY + "_categories"

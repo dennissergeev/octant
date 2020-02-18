@@ -58,6 +58,8 @@ class TrackRun:
         List of dataframe column names. Should contain 'time' to work on datetime objects.
     """
 
+    _mux_names = MUX_NAMES
+
     def __init__(self, dirname=None, **load_kwargs):
         """
         Initialise octant.core.TrackRun.
@@ -70,7 +72,6 @@ class TrackRun:
         load_kwargs: dict, optional
             Parameters passed to load_data()
         """
-        self._mux_names = MUX_NAMES
         self.dirname = dirname
         self.conf = None
         mux = pd.MultiIndex.from_arrays([[], []], names=self._mux_names)
@@ -177,7 +178,7 @@ class TrackRun:
         else:
             raise NotCategorisedError
 
-    def load_data(self, dirname, conf_file=None, loader=PMCTRACKLoader):
+    def load_data(self, dirname, conf_file=None, loader_cls=PMCTRACKLoader):
         """
         Read tracking results from a directory into `TrackRun.data` attribute.
 
@@ -188,9 +189,9 @@ class TrackRun:
         conf_file: pathlib.Path, optional
             Path to the configuration file. If omitted, an attempt is
             made to find a .conf file in the `dirname` directory
-        loader: octant.io.CSVLoader, optional
+        loader_cls: type, optional
             Loader with methods to load files.
-            By default, PMCTRACKLoader is used.
+            By default, `octant.io.PMCTRACKLoader` is used.
 
         See Also
         --------
@@ -212,7 +213,7 @@ class TrackRun:
                 warnings.warn(msg, MissingConfWarning)
 
         # Load the tracks
-        loader_obj = loader(dirname=dirname)
+        loader_obj = loader_cls(dirname=dirname)
         self.data = loader_obj()
         self.columns = self.data.columns
 

@@ -140,7 +140,7 @@ def check_by_mask(
 
     Parameters
     ----------
-    ot: octant.core.OctantTrack
+    ot: octant.parts.OctantTrack
         Cyclone track to check
     trackrun: octant.core.TrackRun
         (parent) track run instance to get lon/lat boundaries if present
@@ -199,7 +199,7 @@ def check_far_from_boundaries(ot, lonlat_box, dist, r_planet=EARTH_RADIUS):
 
     Parameters
     ----------
-    ot: octant.core.OctantTrack
+    ot: octant.parts.OctantTrack
         Individual cyclone-track object
     lonlat_box: list
         Boundaries of longitude-latitude rectangle (lon_min, lon_max, lat_min, lat_max)
@@ -233,7 +233,7 @@ def check_far_from_boundaries(ot, lonlat_box, dist, r_planet=EARTH_RADIUS):
 
     See Also
     --------
-    octant.core.OctantTrack.within_rectangle, octant.utils.check_by_mask
+    octant.parts.OctantTrack.within_rectangle, octant.utils.check_by_mask
     """
     # Preliminary check: track is within the rectangle
     # (Could be the case for a small rectangle.)
@@ -268,7 +268,7 @@ def check_by_arr_thresh(ot, arr, arr_thresh, oper, dist, reduce="mean", r_planet
 
     Parameters
     ----------
-    ot: octant.core.OctantTrack
+    ot: octant.parts.OctantTrack
         Cyclone track to check
     arr: xarray.DataArray
         Two-dimensional array
