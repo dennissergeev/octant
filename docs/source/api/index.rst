@@ -17,6 +17,7 @@ overall workflow, you are better off starting in the :ref:`examples` section of 
    :maxdepth: 1
 
    core
+   io
    aux
    grid
    misc
