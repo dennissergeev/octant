@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Classes and functions for the analysis of PMCTRACK output."""
+"""Commonly used parameters."""
 import numpy as np
 
+
+# Coding constants
+FILLVAL = 9e20
+MUX_NAMES = ["track_idx", "row_idx"]
+
+# Physical and metric constants
 HOUR = np.timedelta64(1, "h")
 M2KM = 1e-3
 KM2M = 1e3
-
-FILLVAL = 9e20
-
-COLUMNS = ["lon", "lat", "vo", "time", "area", "vortex_type"]
-ARCH_KEY = "trackrun"
-ARCH_KEY_CAT = ARCH_KEY + "_categories"
-
-EARTH_RADIUS = 6_371_009.0  # in metres
-# NB in iris: 6367470 m
+EARTH_RADIUS = 6_371_009.0  # in metres; NB in iris: 6367470 m
+SCALE_VO = 1e-3

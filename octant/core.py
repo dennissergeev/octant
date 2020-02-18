@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Classes and functions for the analysis of PMCTRACK output."""
+"""Classes and functions for the analysis of cyclone tracking output."""
 import operator
 import warnings
 from functools import partial
@@ -23,8 +23,9 @@ from .exceptions import (
     SelectError,
 )
 from .grid import cell_bounds, cell_centres, grid_cell_areas
+from .io import ARCH_KEY, ARCH_KEY_CAT, PMCTRACKLoader
 from .misc import _exclude_by_first_day, _exclude_by_last_day
-from .params import ARCH_KEY, ARCH_KEY_CAT, COLUMNS, EARTH_RADIUS, FILLVAL, HOUR, KM2M, M2KM
+from .params import EARTH_RADIUS, FILLVAL, HOUR, KM2M, M2KM, MUX_NAMES
 from .parts import TrackSettings
 from .utils import (
     distance_metric,
@@ -198,7 +199,7 @@ class OctantTrack(pd.DataFrame):
             If not given, a new figure with cartopy geoaxes is created
         transform: matplotlib transform, optional
             Default: cartopy.crs.PlateCarree()
-        kwargs: other keyword arguments
+        kwargs: dict, optional
             Options to pass to matplotlib plot() function
         Returns
         -------
@@ -227,11 +228,11 @@ class TrackRun:
     cats: None or pandas.DataFrame
         DataFrame with the same index as data and the number of columns equal to
         the number of categories; None if `is_categorised` is False
+    columns: sequence of str
+        List of dataframe column names. Should contain 'time' to work on datetime objects.
     """
 
-    _mux_names = ["track_idx", "row_idx"]
-
-    def __init__(self, dirname=None, columns=COLUMNS, **kwargs):
+    def __init__(self, dirname=None, **load_kwargs):
         """
         Initialise octant.core.TrackRun.
 
@@ -240,15 +241,14 @@ class TrackRun:
         dirname: pathlib.Path, optional
             Path to the directory with tracking output
             If present, load the data during on init
-        columns: sequence of str, optional
-            List of column names. Should contain 'time' to parse datetimes.
-        kwargs: other keyword arguments
+        load_kwargs: dict, optional
             Parameters passed to load_data()
         """
+        self._mux_names = MUX_NAMES
         self.dirname = dirname
         self.conf = None
         mux = pd.MultiIndex.from_arrays([[], []], names=self._mux_names)
-        self.columns = columns
+        self.columns = []
         self.data = OctantTrack(index=mux, columns=self.columns)
         self.filelist = []
         self.sources = []
@@ -259,7 +259,7 @@ class TrackRun:
         if isinstance(self.dirname, Path):
             # Read all files and store in self.all
             # as a list of `pandas.DataFrame`s
-            self.load_data(self.dirname, columns=self.columns, **kwargs)
+            self.load_data(self.dirname, **load_kwargs)
         elif self.dirname is not None:
             raise LoadError("To load data, `dirname` should be Path-like object")
 
@@ -351,9 +351,7 @@ class TrackRun:
         else:
             raise NotCategorisedError
 
-    def load_data(
-        self, dirname, columns=COLUMNS, wcard="vortrack*0001.txt", conf_file=None, scale_vo=1e-3
-    ):
+    def load_data(self, dirname, conf_file=None, loader=PMCTRACKLoader):
         """
         Read tracking results from a directory into `TrackRun.data` attribute.
 
@@ -361,27 +359,18 @@ class TrackRun:
         ----------
         dirname: pathlib.Path
             Path to the directory with tracking output
-        columns: sequence of str, optional
-            List of column names. Should contain 'time' to parse datetimes.
         conf_file: pathlib.Path, optional
             Path to the configuration file. If omitted, an attempt is
             made to find a .conf file in the `dirname` directory
-        wcard: str
-            Wildcard for files to read in. By default, loads only "primary" vortices
-            and skips merged. See PMCTRACK docs for more info.
-        scale_vo: float, optional
-            Scale vorticity values column to SI units (s-1)
-            By default PMCTRACK writes out vorticity in (x10-3 s-1),
-            so scale_vo default is 1e-3. To switch off scaling, set it to 1.
+        loader: octant.io.CSVLoader, optional
+            Loader with methods to load files.
+            By default, PMCTRACKLoader is used.
+
+        See Also
+        --------
+        octant.core.TrackRun.to_archive, octant.core.TrackRun.from_archive,
+        octant.io.CSVLoader, octant.io.PMCTRACKLoader, octant.io.STARSLoader
         """
-        if not dirname.is_dir():
-            raise LoadError(f"No such directory: {dirname}")
-        # deprecated...
-        # if primary_only:
-        #     wcard = "vortrack*0001.txt"
-        # else:
-        #     wcard = "vortrack*.txt"
-        self.filelist = sorted([*dirname.glob(wcard)])
         self.sources.append(str(dirname))
 
         # Load configuration
@@ -397,17 +386,9 @@ class TrackRun:
                 warnings.warn(msg, MissingConfWarning)
 
         # Load the tracks
-        self.columns = columns
-        load_kw = {"delimiter": r"\s+", "names": self.columns, "parse_dates": ["time"]}  # noqa
-        _data = []
-        for fname in self._pbar(self.filelist):
-            _data.append(OctantTrack.from_df(pd.read_csv(fname, **load_kw)))
-        if len(_data) > 0:
-            self.data = pd.concat(_data, keys=range(len(_data)), names=self._mux_names)
-            # self.data["cat"] = 0
-            # Scale vorticity to (s-1)
-            self.data["vo"] *= scale_vo
-        del _data
+        loader_obj = loader(dirname=dirname)
+        self.data = loader_obj()
+        self.columns = self.data.columns
 
     @classmethod
     def from_archive(cls, filename):
