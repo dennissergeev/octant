@@ -67,7 +67,7 @@ def ref_set():
     )
     ref_tracks = []
     for i, df in ref.groupby("N"):
-        ot = core.OctantTrack.from_df(df)
+        ot = parts.OctantTrack.from_df(df)
         if ot.lifetime_h >= 6:
             ref_tracks.append(ot)
     assert len(ref_tracks) == 27
