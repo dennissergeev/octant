@@ -860,20 +860,23 @@ class TrackRun:
         """
         # Recursive call for each of the available categies
         if subset is None:
-            result = {}
-            for subset_key in self.cat_labels:
-                result[subset_key] = self.match_tracks(
-                    others,
-                    subset=subset_key,
-                    method=method,
-                    interpolate_to=interpolate_to,
-                    thresh_dist=thresh_dist,
-                    time_frac=time_frac,
-                    return_dist_matrix=return_dist_matrix,
-                    beta=beta,
-                    r_planet=r_planet,
-                )
-            return result
+            if self.is_categorised:
+                result = {}
+                for subset_key in self.cat_labels:
+                    result[subset_key] = self.match_tracks(
+                        others,
+                        subset=subset_key,
+                        method=method,
+                        interpolate_to=interpolate_to,
+                        thresh_dist=thresh_dist,
+                        time_frac=time_frac,
+                        return_dist_matrix=return_dist_matrix,
+                        beta=beta,
+                        r_planet=r_planet,
+                    )
+                return result
+            else:
+                subset = "all"
 
         # Select subset
         sub_gb = self[subset].gb
@@ -1048,22 +1051,25 @@ class TrackRun:
         """
         # Recursive call for each of the available categies
         if subset is None:
-            result = {}
-            for subset_key in self.cat_labels:
-                result[subset_key] = self.density(
-                    lon1d,
-                    lat1d,
-                    by=by,
-                    subset=subset_key,
-                    method=method,
-                    dist=dist,
-                    exclude_first=exclude_first,
-                    exclude_last=exclude_last,
-                    grid_centres=grid_centres,
-                    weight_by_area=weight_by_area,
-                    r_planet=r_planet,
-                )
-            return result
+            if self.is_categorised:
+                result = {}
+                for subset_key in self.cat_labels:
+                    result[subset_key] = self.density(
+                        lon1d,
+                        lat1d,
+                        by=by,
+                        subset=subset_key,
+                        method=method,
+                        dist=dist,
+                        exclude_first=exclude_first,
+                        exclude_last=exclude_last,
+                        grid_centres=grid_centres,
+                        weight_by_area=weight_by_area,
+                        r_planet=r_planet,
+                    )
+                return result
+            else:
+                subset = "all"
 
         # Redefine grid if necessary
         if grid_centres:
