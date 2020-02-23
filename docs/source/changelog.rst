@@ -3,6 +3,21 @@ Changelog
 
 .. default-role:: py:obj
 
+
+v0.0.24
+-------
+
+:Release: 0.0.24
+:Date: 23 February 2020
+
+* Correct previous release label
+* Rewrite `TrackRun.load_data()`
+* Add a base class to create custom loaders for CSV files (see `io.py` module)
+* Allow for checking of tracks against mean area threshold
+* Allow for non-categorised `TrackRun` to perform matching and density calculation
+* Other minor bug fixes
+
+
 v0.0.20
 -------
 
