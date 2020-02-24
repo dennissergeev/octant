@@ -61,7 +61,7 @@ def get_pbar(use="fastprogress"):
         try:
             if use == "fastprogress":
                 # if fastprogress is installed
-                from fastprogress import progress_bar
+                from fastprogress.fastprogress import progress_bar
 
                 return partial(progress_bar)
             elif use == "tqdm":
@@ -70,7 +70,7 @@ def get_pbar(use="fastprogress"):
                     # Check if it's Jupyter Notebook
                     ipy_str = str(type(get_ipython()))
                     if "zmqshell" in ipy_str.lower():
-                        from tqdm import tqdm_notebook as tqdm
+                        from tqdm.notebook import tqdm
                     else:
                         from tqdm import tqdm
                 except NameError:
