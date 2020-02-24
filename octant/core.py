@@ -408,7 +408,7 @@ class TrackRun:
 
         Examples
         --------
-        Simple check using OctantTrack properties
+        A check using just OctantTrack properties
 
         >>> from octant.core import TrackRun
         >>> tr = TrackRun(path_to_directory_with_tracks)
